@@ -1,0 +1,30 @@
+{
+  "name": "yomiru",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start --workspace=@yomiru/mobile",
+    "backend": "npm run dev --workspace=@yomiru/backend",
+    "backend:lan": "HOST=0.0.0.0 npm run dev --workspace=@yomiru/backend",
+    "shared:build": "npm run build --workspace=@yomiru/shared",
+    "test:backend": "npm run test --workspace=@yomiru/backend",
+    "ingestor": "npm run worker --workspace=@yomiru/ingestor",
+    "ingestor:dev": "npm run dev --workspace=@yomiru/ingestor",
+    "ingest": "npm run cli --workspace=@yomiru/ingestor --",
+    "db:generate": "npm run generate --workspace=@yomiru/db",
+    "db:migrate": "npm run migrate --workspace=@yomiru/db",
+    "db:studio": "npm run studio --workspace=@yomiru/db",
+    "redis:up": "docker compose up -d redis",
+    "redis:down": "docker compose down",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "web": "npm run dev --workspace=@yomiru/web -- --port 3000 --host",
+    "web:build": "npm run build --workspace=@yomiru/web"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

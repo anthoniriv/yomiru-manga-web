@@ -1,0 +1,105 @@
+---
+import { formatStatus } from '../lib/labels';
+
+export interface Props {
+  slug: string;
+  title: string;
+  coverUrl: string;
+  totalChapters: number | null;
+  rating: number | null;
+  status: string | null;
+  author: string | null;
+  featured?: boolean;
+  admin?: boolean;
+  isAdult?: boolean;
+  redirectTo?: string;
+}
+
+const {
+  slug,
+  title,
+  coverUrl,
+  totalChapters,
+  rating,
+  status,
+  admin = false,
+  isAdult = false,
+  redirectTo = '/',
+} = Astro.props;
+
+const statusLabel = formatStatus(status);
+const statusStyles: Record<string, string> = {
+  ongoing:   'bg-emerald-500 text-zinc-950',
+  completed: 'bg-accent text-zinc-950',
+  hiatus:    'bg-amber-500 text-zinc-950',
+  cancelled: 'bg-accent text-zinc-950',
+};
+const statusKey = status?.toLowerCase() ?? '';
+const statusClass = statusLabel ? (statusStyles[statusKey] ?? 'bg-zinc-700 text-white') : '';
+---
+
+<div class="w-full group cursor-pointer">
+  <div class="relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-lg group-hover:shadow-accent/20 group-hover:border-accent/30 transition-all duration-300">
+    <a href={`/manga/${slug}`} class="absolute inset-0 z-10" aria-label={title}></a>
+
+    <div class="aspect-[2/3] relative overflow-hidden rounded-t-2xl">
+      <img
+        src={coverUrl}
+        alt={title}
+        loading="lazy"
+        class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 rounded-t-2xl"
+        onerror="this.src='/placeholder-cover.svg'"
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+
+      {statusLabel && (
+        <div class="absolute top-3 right-3 z-20">
+          <span class={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${statusClass}`}>
+            {statusLabel}
+          </span>
+        </div>
+      )}
+
+      {admin && (
+        <form
+          method="POST"
+          action={`/api/series/${slug}/adult`}
+          class="absolute top-3 left-3 z-30"
+        >
+          <input type="hidden" name="value" value={isAdult ? '0' : '1'} />
+          <input type="hidden" name="redirect" value={redirectTo} />
+          <button
+            type="submit"
+            onclick="event.stopPropagation()"
+            class={`text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md transition-colors ${
+              isAdult
+                ? 'bg-accent text-zinc-950'
+                : 'bg-zinc-950/80 backdrop-blur-sm text-zinc-300 border border-zinc-800 hover:bg-accent hover:text-zinc-950 hover:border-accent'
+            }`}
+          >
+            {isAdult ? '18+ ✓' : '18+'}
+          </button>
+        </form>
+      )}
+
+      <div class="absolute bottom-3 left-4 right-4 group-hover:opacity-0 transition-opacity">
+        <h3 class="text-white font-black text-sm italic leading-tight mb-1 tracking-tight line-clamp-2">
+          {title}
+        </h3>
+        <div class="flex items-center justify-between text-[10px]">
+          {totalChapters != null && (
+            <span class="text-accent font-black uppercase tracking-widest">
+              {totalChapters} capítulos
+            </span>
+          )}
+          {rating != null && (
+            <span class="flex items-center gap-0.5 text-zinc-400 font-bold">
+              <span class="text-accent">★</span>
+              {rating.toFixed(1)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

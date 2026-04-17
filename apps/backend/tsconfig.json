@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@yomiru/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src/**/*"]
+}

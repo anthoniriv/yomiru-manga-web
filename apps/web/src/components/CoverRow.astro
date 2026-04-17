@@ -1,0 +1,115 @@
+---
+import { getCoverUrl } from '../lib/db';
+import type { Series } from '../lib/db';
+import { formatStatus } from '../lib/labels';
+
+export interface Props {
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  items: Series[];
+  showNumbers?: boolean;
+  admin?: boolean;
+  redirectTo?: string;
+}
+
+const {
+  title,
+  subtitle,
+  badge,
+  items,
+  showNumbers = false,
+  admin = false,
+} = Astro.props;
+---
+
+{items.length > 0 && (
+  <section class="animate-fade-in">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+      <div class="space-y-1">
+        {badge && (
+          <div class="flex items-center gap-2 text-accent font-bold uppercase tracking-[0.2em] text-[10px]">
+            <span>★</span> {badge}
+          </div>
+        )}
+        <h2 class="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">
+          {title}
+        </h2>
+        {subtitle && (
+          <p class="text-sm text-zinc-500 max-w-xl">{subtitle}</p>
+        )}
+      </div>
+    </div>
+
+    <div class="relative -mx-4 md:mx-0">
+      <div class="no-scrollbar snap-row overflow-x-auto px-4 pb-4 md:overflow-visible md:px-0 md:pb-0">
+        <div class="flex gap-4 md:grid md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-6">
+          {items.map((s, i) => {
+            const statusLabel = formatStatus(s.status);
+            return (
+            <a
+              href={`/manga/${s.slug}`}
+              class="group flex-shrink-0 w-[180px] sm:w-[200px] md:w-auto"
+            >
+              <div class="relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-lg group-hover:shadow-accent/20 group-hover:border-accent/30 transition-all duration-300">
+                <div class="aspect-[2/3] relative overflow-hidden rounded-t-2xl">
+                  {showNumbers && (
+                    <span class="absolute -left-1 top-0 z-20 text-[110px] font-black italic leading-none text-white/95 drop-shadow-2xl" style="-webkit-text-stroke: 2px #E95000;">
+                      {i + 1}
+                    </span>
+                  )}
+                  {statusLabel && (
+                    <span class="absolute top-3 right-3 z-20 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-zinc-950">
+                      {statusLabel}
+                    </span>
+                  )}
+                  {s.isAdult && admin && (
+                    <span class="absolute top-3 left-3 z-20 px-2 py-0.5 rounded-md bg-accent text-zinc-950 text-[10px] font-black uppercase tracking-widest">
+                      18+
+                    </span>
+                  )}
+                  <img
+                    src={getCoverUrl(s)}
+                    alt={s.title}
+                    loading="lazy"
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 rounded-t-2xl"
+                    onerror="this.src='/placeholder-cover.svg'"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+
+                  <div class="absolute bottom-3 left-4 right-4">
+                    <h3 class="text-white font-black text-sm italic leading-tight mb-1 tracking-tight line-clamp-2">
+                      {s.title}
+                    </h3>
+                    <div class="flex items-center justify-between text-[10px]">
+                      {s.totalChapters != null && (
+                        <span class="text-accent font-black uppercase tracking-widest">
+                          {s.totalChapters} capítulos
+                        </span>
+                      )}
+                      {s.rating != null && (
+                        <span class="flex items-center gap-0.5 text-zinc-400 font-bold">
+                          <span class="text-accent">★</span>
+                          {s.rating.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {s.sourceName && (
+                  <div class="px-4 py-3 bg-zinc-900/90 border-t border-zinc-800/50 flex items-center justify-between group-hover:bg-zinc-800 transition-colors">
+                    <span class="text-[9px] font-black text-zinc-500 uppercase tracking-widest truncate">
+                      {s.sourceName.replace(/^www\./, '')}
+                    </span>
+                    <div class="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
+                  </div>
+                )}
+              </div>
+            </a>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  </section>
+)}

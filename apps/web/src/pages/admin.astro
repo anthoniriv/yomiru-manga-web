@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import EnrichAll from '../components/EnrichAll.tsx';
+import { isAdmin } from '../lib/admin';
+
+const loggedIn = isAdmin(Astro.cookies);
+const error = Astro.url.searchParams.get('error') === '1';
+const redirectTo = Astro.url.searchParams.get('redirect') ?? '/';
+---
+
+<Base title="Gestión">
+  <div class={loggedIn ? 'max-w-3xl mx-auto px-4 py-10' : 'max-w-sm mx-auto px-4 py-16'}>
+    {loggedIn ? (
+      <div>
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="w-1 h-4 rounded-full bg-accent shadow-glow-accent"></span>
+              <span class="text-accent text-[11px] font-bold tracking-[0.18em] uppercase">Gestión</span>
+            </div>
+            <h1 class="font-display text-3xl tracking-tight text-white">Panel</h1>
+          </div>
+          <form method="POST" action="/api/admin/logout">
+            <button
+              type="submit"
+              class="px-3 py-1.5 rounded-full border border-white/10 text-zinc-300 text-xs hover:border-accent hover:text-accent transition-colors"
+            >
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+        <div class="mt-8 p-6 rounded-2xl bg-ink-800/60 border border-white/5 backdrop-blur-sm">
+          <h2 class="font-bold text-white">Gestión masiva +18</h2>
+          <p class="text-xs text-zinc-400 mt-1 mb-4">
+            Lista todas las series con portadas. Selección múltiple para marcar/quitar +18.
+          </p>
+          <a
+            href="/admin/manga"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-zinc-950 text-sm font-bold hover:bg-accent-400 transition-colors shadow-glow-accent"
+          >
+            Abrir gestor →
+          </a>
+        </div>
+        <EnrichAll client:load />
+      </div>
+    ) : (
+      <form method="POST" action="/api/admin/login" class="flex flex-col gap-3">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="w-1 h-4 rounded-full bg-accent shadow-glow-accent"></span>
+          <span class="text-accent text-[11px] font-bold tracking-[0.18em] uppercase">Gestión</span>
+        </div>
+        <h1 class="font-display text-3xl tracking-tight text-white mb-2">Acceso</h1>
+        {error && (
+          <p class="text-sm text-accent">Contraseña incorrecta.</p>
+        )}
+        <input type="hidden" name="redirect" value={redirectTo} />
+        <input
+          type="password"
+          name="password"
+          placeholder="Contraseña"
+          required
+          autofocus
+          class="w-full px-4 py-2.5 rounded-full border border-white/10 bg-ink-800/70 text-white placeholder-zinc-500 focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/30"
+        />
+        <button
+          type="submit"
+          class="px-5 py-2.5 rounded-full bg-accent text-zinc-950 text-sm font-bold hover:bg-accent-400 transition-colors shadow-glow-accent"
+        >
+          Entrar
+        </button>
+      </form>
+    )}
+  </div>
+</Base>

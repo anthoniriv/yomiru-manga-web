@@ -1,0 +1,246 @@
+---
+import ChapterNav from '../../../components/ChapterNav.tsx';
+import { getSeriesBySlug, getChaptersBySeries, getChapterByNumber, getPagesByChapter } from '../../../lib/db';
+import { readShowAdult } from '../../../lib/nsfw';
+
+const { slug, chapter: chapterParam } = Astro.params;
+if (!slug || !chapterParam) return Astro.redirect('/');
+
+const series = await getSeriesBySlug(slug);
+if (!series) return new Response('Not Found', { status: 404 });
+
+const showAdult = readShowAdult(Astro.cookies);
+if (series.isAdult && !showAdult) return Astro.redirect('/');
+
+const chapterNum = parseFloat(chapterParam);
+if (isNaN(chapterNum)) return new Response('Not Found', { status: 404 });
+
+const chapter = await getChapterByNumber(series.id, chapterNum);
+if (!chapter) return new Response('Not Found', { status: 404 });
+
+if (chapter.downloadStatus !== 'completed') {
+  return Astro.redirect(`/manga/${slug}`);
+}
+
+const pages = await getPagesByChapter(chapter.id);
+
+// Build prev/next navigation
+const allChapters = await getChaptersBySeries(series.id);
+const completedChapters = allChapters.filter(c => c.downloadStatus === 'completed');
+const currentIdx = completedChapters.findIndex(c => c.number === chapterNum);
+const prevChapter = currentIdx > 0 ? completedChapters[currentIdx - 1] : null;
+const nextChapter = currentIdx < completedChapters.length - 1 ? completedChapters[currentIdx + 1] : null;
+
+const prevUrl = prevChapter ? `/manga/${slug}/${prevChapter.number}` : null;
+const nextUrl = nextChapter ? `/manga/${slug}/${nextChapter.number}` : null;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050505" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>
+      {series.title} — Cap. {chapter.number}{chapter.title ? ` — ${chapter.title}` : ''} — Yomiru
+    </title>
+    <style>
+      body {
+        background-color: #050505;
+        color: #F1F5FA;
+        font-family: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+      }
+      ::selection { background: rgba(233, 80, 0, 0.35); color: #ff9b61; }
+      .yomiru-bolt-fill { animation: yomiru-bolt-fill 1.3s ease-in-out infinite; }
+      @keyframes yomiru-bolt-fill {
+        0%   { y: 24; height: 0; opacity: 1; }
+        55%  { y: 0;  height: 24; opacity: 1; }
+        85%  { y: 0;  height: 24; opacity: 0.95; }
+        100% { y: 0;  height: 24; opacity: 0; }
+      }
+      .yomiru-bolt { filter: drop-shadow(0 0 4px rgba(233, 80, 0, 0.55)); }
+      .yomiru-nav-bolt { filter: drop-shadow(0 0 14px rgba(233, 80, 0, 0.7)); }
+      #yomiru-nav-loader.flex { display: flex; }
+      .yomiru-img-wrap {
+        position: relative;
+        width: 100%;
+        min-height: 120px;
+        background: rgba(255,255,255,0.02);
+      }
+      .yomiru-img-wrap .yomiru-img-loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .yomiru-img-wrap img { display: block; width: 100%; }
+      .yomiru-img-wrap img[data-loaded="true"] + .yomiru-img-loader { display: none; }
+    </style>
+  </head>
+  <body class="min-h-screen antialiased">
+    <div
+      id="yomiru-nav-loader"
+      class="fixed inset-0 z-[100] items-center justify-center pointer-events-none hidden"
+      style="background: rgba(2, 24, 43, 0.65); backdrop-filter: blur(6px);"
+      aria-hidden="true"
+      role="status"
+    >
+      <svg width="96" height="96" viewBox="0 0 24 24" class="yomiru-bolt yomiru-nav-bolt">
+        <defs>
+          <clipPath id="nav-bolt-clip-r"><path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" /></clipPath>
+          <linearGradient id="nav-bolt-grad-r" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#4A1A00" />
+            <stop offset="100%" stop-color="#E95000" />
+          </linearGradient>
+        </defs>
+        <path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" fill="none" stroke="#E95000" stroke-width="1.4" stroke-linejoin="round" />
+        <g clip-path="url(#nav-bolt-clip-r)"><rect x="0" width="24" fill="url(#nav-bolt-grad-r)" class="yomiru-bolt-fill" /></g>
+      </svg>
+    </div>
+    <script is:inline>
+      (function () {
+        const loader = document.getElementById('yomiru-nav-loader');
+        if (!loader) return;
+        const show = () => { loader.classList.remove('hidden'); loader.classList.add('flex'); };
+        const hide = () => { loader.classList.add('hidden'); loader.classList.remove('flex'); };
+        document.addEventListener('click', (e) => {
+          const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
+          if (!a) return;
+          if (a.target === '_blank' || a.hasAttribute('download')) return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          const href = a.getAttribute('href') || '';
+          if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+          try {
+            const url = new URL(href, location.href);
+            if (url.origin !== location.origin) return;
+            if (url.pathname === location.pathname && url.search === location.search) return;
+          } catch { return; }
+          show();
+        });
+        window.addEventListener('pageshow', hide);
+        window.addEventListener('pagehide', hide);
+      })();
+    </script>
+
+    <!-- Top nav bar -->
+    <header class="border-b border-white/5 bg-primary-900/70 backdrop-blur-xl sticky top-0 z-50">
+      <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight text-white/90 hover:text-white transition-colors">
+          <span class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-accent text-zinc-950 shadow-lg shadow-accent/30">
+            <span class="text-lg font-black">読</span>
+          </span>
+          <span>Yomiru</span>
+        </a>
+        <div class="flex items-center gap-4">
+          <a href="/mangas" class="hidden sm:inline text-xs text-zinc-400 hover:text-accent transition-colors">
+            Catálogo
+          </a>
+          <a href={`/manga/${slug}`} class="text-xs text-zinc-400 hover:text-accent transition-colors">
+          ← Volver a la serie
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Chapter nav (React island for keyboard support) -->
+    <ChapterNav
+      client:load
+      prevUrl={prevUrl}
+      nextUrl={nextUrl}
+      seriesUrl={`/manga/${slug}`}
+      seriesTitle={series.title}
+      chapterNumber={chapter.number}
+    />
+
+    <!-- Chapter title -->
+    <div class="text-center py-8">
+      <div class="inline-flex items-center gap-2 mb-2">
+        <span class="w-1 h-3 rounded-full bg-accent"></span>
+        <span class="text-accent text-[10px] font-bold tracking-[0.2em] uppercase">Capítulo {chapter.number}</span>
+        <span class="w-1 h-3 rounded-full bg-accent"></span>
+      </div>
+      {chapter.title && (
+        <h1 class="text-white text-xl font-semibold">{chapter.title}</h1>
+      )}
+    </div>
+
+    <!-- Pages: vertical scroll reader -->
+    <div class="max-w-3xl mx-auto px-2 pb-12">
+      {pages.length === 0 ? (
+        <div class="text-center py-24 text-zinc-500">
+          <p class="text-4xl mb-4 text-accent">読</p>
+          <p>No pages found for this chapter.</p>
+        </div>
+      ) : (
+        <div class="flex flex-col gap-0.5">
+          {pages.map((page, i) => {
+            const src = page.storagePath ? `/media/${page.storagePath}` : (page.sourceUrl ?? '');
+            const ratioStyle = page.width && page.height ? `aspect-ratio: ${page.width} / ${page.height}` : '';
+            return (
+              <div class="yomiru-img-wrap" style={ratioStyle}>
+                <img
+                  src={src}
+                  alt={`Page ${page.idx + 1}`}
+                  loading={i < 3 ? 'eager' : 'lazy'}
+                  class="w-full block"
+                  onload="this.dataset.loaded='true'"
+                  data-loaded="false"
+                />
+                <div class="yomiru-img-loader">
+                  <svg width="44" height="44" viewBox="0 0 24 24" class="yomiru-bolt">
+                    <defs>
+                      <clipPath id={`img-clip-${i}`}><path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" /></clipPath>
+                      <linearGradient id={`img-grad-${i}`} x1="0" y1="1" x2="0" y2="0">
+                        <stop offset="0%" stop-color="#4A1A00" />
+                        <stop offset="100%" stop-color="#E95000" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" fill="none" stroke="#E95000" stroke-width="1.4" stroke-linejoin="round" />
+                    <g clip-path={`url(#img-clip-${i})`}><rect x="0" width="24" fill={`url(#img-grad-${i})`} class="yomiru-bolt-fill" /></g>
+                  </svg>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="border-t border-white/5 bg-primary-900/70 backdrop-blur-xl py-5">
+      <div class="max-w-3xl mx-auto px-4 flex items-center justify-between gap-4">
+        <a href={`/manga/${slug}`} class="text-sm text-zinc-400 hover:text-accent transition-colors flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+          Lista de capítulos
+        </a>
+        <div class="flex gap-3">
+          {prevUrl && (
+            <a href={prevUrl} class="text-sm text-zinc-400 hover:text-accent transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-accent/50">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Prev
+            </a>
+          )}
+          {nextUrl && (
+            <a href={nextUrl} class="text-sm text-zinc-950 font-semibold transition-colors flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-accent hover:bg-accent-400 shadow-glow-accent">
+              Next
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "skills": {
+    "dev-toolbar-review": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "95e05bc2f236922ce7b0797f2d7cc283472f95f941591c86cd4b823c80f4d50a"
+    },
+    "studio-best-practices": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "f23cfa20905d68f58c36ca6c69de35596f29eafed4259b02ca481612554a31f5"
+    },
+    "studio-e2e-tests": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "0d3a8baf4ef32809198a68a328e5c03c4dc39c097a98724a1f16e46825a775f6"
+    },
+    "studio-error-handling": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "43ecf7a6c200102dea69496a2d6d3aadf21fc30b6f81a2c5c9803b4e9bfb0d37"
+    },
+    "studio-queries": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "4844886251ce852e7a9a9f2fdc6498a4e81fd0bb7d6009705a2b0b1b019a0305"
+    },
+    "studio-testing": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "5b0a36599ed4a1cf23eea1641eaf284cab70c61a9ca6085427b47d578978ed60"
+    },
+    "studio-ui-patterns": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "b02b4db2344f3912686e26261da3e811084dd2081644086a6939b43e1945e333"
+    },
+    "telemetry-standards": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "48d994e146a908d37af5e7a53ea2fbff412e032ebd4fac11a287c045191d102c"
+    },
+    "use-static-effect-event": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "c6dc8240354113c909794a9c4b96170346ded615b6cdcabc78634e5e44222de1"
+    },
+    "vercel-composition-patterns": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "ef613d4c6067c6c1ce278bd2fc7d8ee0f11aa69d7fbbe871a6f2965d26b99602"
+    },
+    "vitest": {
+      "source": "supabase/supabase",
+      "sourceType": "github",
+      "computedHash": "669c7275f7e1379b06b2bcfa593603aead4c983b951c7e8edbc09640aa38d0a1"
+    }
+  }
+}

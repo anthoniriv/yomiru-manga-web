@@ -1,0 +1,68 @@
+---
+import Base from '../layouts/Base.astro';
+import CoverRow from '../components/CoverRow.astro';
+import SourceChips from '../components/SourceChips.astro';
+import Hero, { type HeroSlide } from '../components/Hero.tsx';
+import {
+  getCatalogSeries,
+  getCoverUrl,
+  getTopSeries,
+  getRecentlyUpdatedSeries,
+  getSourcesSummary,
+  getSeriesBackdropMap,
+} from '../lib/db';
+import { readShowAdult } from '../lib/nsfw';
+import { isAdmin } from '../lib/admin';
+
+const showAdult = readShowAdult(Astro.cookies);
+const admin = isAdmin(Astro.cookies);
+
+const [{ series: latestAdded }, recentlyUpdated, topSeries, sources] = await Promise.all([
+  getCatalogSeries(1, 5, { showAdult, sort: 'added' }),
+  getRecentlyUpdatedSeries(14, { showAdult }),
+  getTopSeries(14, { showAdult }),
+  getSourcesSummary({ showAdult }),
+]);
+
+const heroBackgrounds = await getSeriesBackdropMap(latestAdded.map((s) => s.id));
+const heroSlides: HeroSlide[] = latestAdded.map((s) => ({
+  slug: s.slug,
+  title: s.title,
+  description: s.description,
+  coverUrl: getCoverUrl(s),
+  backgroundUrl: heroBackgrounds.get(s.id) ?? null,
+  source: s.sourceName,
+  rating: s.rating,
+  totalChapters: s.totalChapters,
+  status: s.status,
+}));
+---
+
+<Base title="Biblioteca">
+  {heroSlides.length > 0 && (
+    <Hero slides={heroSlides} client:load />
+  )}
+
+  <div class="max-w-[1600px] mx-auto px-4 md:px-8 pt-10 pb-8 space-y-16">
+    {sources.length > 0 && (
+      <div class="relative z-30">
+        <SourceChips sources={sources} />
+      </div>
+    )}
+
+    <CoverRow
+      title="Últimas actualizaciones"
+      subtitle="Nuevos capítulos recién subidos"
+      badge="Todos los scans"
+      items={recentlyUpdated}
+      admin={admin}
+    />
+
+    <CoverRow
+      title="Populares de la semana"
+      badge="Tendencias globales"
+      items={topSeries}
+      admin={admin}
+    />
+  </div>
+</Base>

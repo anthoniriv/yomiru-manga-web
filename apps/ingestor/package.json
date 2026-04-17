@@ -1,0 +1,31 @@
+{
+  "name": "@yomiru/ingestor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "worker": "tsx src/worker.ts",
+    "cli": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@yomiru/db": "*",
+    "@yomiru/r2": "*",
+    "@yomiru/shared": "*",
+    "@yomiru/backend": "*",
+    "bullmq": "^5.21.0",
+    "ioredis": "^5.4.1",
+    "cheerio": "^1.0.0",
+    "p-limit": "^6.1.0",
+    "sharp": "^0.33.5",
+    "ulid": "^2.3.0",
+    "slugify": "^1.6.6",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

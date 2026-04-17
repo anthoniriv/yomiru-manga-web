@@ -1,0 +1,243 @@
+---
+import Base from '../../layouts/Base.astro';
+import ChapterList from '../../components/ChapterList.tsx';
+import {
+  getSeriesBySlug,
+  getChaptersWithPreviewsBySeries,
+  getCoverUrl,
+  getSeriesGenres,
+  getSeriesBackdropUrl,
+} from '../../lib/db';
+import { formatGenre, formatStatus } from '../../lib/labels';
+import { readShowAdult } from '../../lib/nsfw';
+import { isAdmin } from '../../lib/admin';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/');
+
+const series = await getSeriesBySlug(slug);
+if (!series) return new Response('Not Found', { status: 404 });
+
+const showAdult = readShowAdult(Astro.cookies);
+const admin = isAdmin(Astro.cookies);
+if (series.isAdult && !showAdult && !admin) {
+  return Astro.redirect('/');
+}
+
+const chapters = await getChaptersWithPreviewsBySeries(series.id, true);
+const oldestChapter = chapters[0] ?? null;
+const latestChapter = chapters[chapters.length - 1] ?? null;
+const genres = await getSeriesGenres(series.id);
+const coverUrl = getCoverUrl(series);
+const backgroundUrl = await getSeriesBackdropUrl(series.id);
+const enrichStatus = Astro.url.searchParams.get('enrich');
+
+let altTitles: string[] = [];
+try {
+  if (Array.isArray(series.altTitles)) altTitles = series.altTitles;
+} catch {}
+
+const seriesStatusColor: Record<string, string> = {
+  ongoing: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  completed: 'bg-accent/15 text-accent-300 border-accent/30',
+  hiatus: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  cancelled: 'bg-accent-900/40 text-accent-300 border-accent/30',
+};
+
+const statusLabel = formatStatus(series.status);
+const statusKey = series.status?.toLowerCase() ?? '';
+---
+
+<Base title={series.title} description={series.description ?? undefined}>
+  <div class="relative -mt-16">
+    <div class="absolute inset-x-0 top-0 h-[620px] overflow-hidden">
+      <img
+        src={backgroundUrl ?? coverUrl}
+        alt=""
+        aria-hidden="true"
+        class="h-full w-full object-cover object-center opacity-50 blur-[1px] scale-105"
+        onerror="this.src='/placeholder-cover.svg'"
+      />
+      <div class="absolute inset-0 bg-gradient-to-b from-zinc-950/15 via-zinc-950/72 to-zinc-950" />
+      <div class="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/55 to-zinc-950/15" />
+    </div>
+
+    <section class="relative max-w-[1440px] mx-auto px-4 md:px-8 pt-28 pb-16">
+      <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12 items-center">
+        <aside class="space-y-6">
+          <div class="w-56 sm:w-64 lg:w-full max-w-[320px] mx-auto lg:mx-0 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl shadow-black/70">
+            <img
+              src={coverUrl}
+              alt={series.title}
+              class="w-full aspect-[2/3] object-cover"
+              onerror="this.src='/placeholder-cover.svg'"
+            />
+          </div>
+
+          <button
+            type="button"
+            class="w-full max-w-[320px] mx-auto lg:mx-0 flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
+          >
+            ☆ Añadir a favoritos
+          </button>
+
+          <div class="max-w-[320px] mx-auto lg:mx-0 grid grid-cols-2 gap-3">
+            {statusLabel && (
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Estado</p>
+                <span class={`inline-flex rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-widest ${seriesStatusColor[statusKey] ?? 'bg-white/5 text-zinc-300 border-white/10'}`}>
+                  {statusLabel}
+                </span>
+              </div>
+            )}
+            {series.year && (
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Año</p>
+                <p class="text-white font-black">{series.year}</p>
+              </div>
+            )}
+            {series.rating != null && (
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Puntaje</p>
+                <p class="text-white font-black"><span class="text-accent">★</span> {series.rating.toFixed(1)}</p>
+              </div>
+            )}
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Capítulos</p>
+              <p class="text-white font-black">{chapters.length}</p>
+            </div>
+          </div>
+        </aside>
+
+        <div class="min-w-0 pb-2">
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            {series.sourceName && (
+              <span class="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
+                {series.sourceName.replace(/^www\./, '')}
+              </span>
+            )}
+            {series.isAdult && (
+              <span class="rounded-full bg-accent px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-950">
+                +18
+              </span>
+            )}
+          </div>
+
+          <h1 class="text-4xl md:text-6xl lg:text-7xl font-black italic tracking-tighter uppercase leading-[0.95] text-white display-shadow">
+            {series.title}
+          </h1>
+
+          {altTitles.length > 0 && (
+            <p class="mt-3 text-sm italic text-zinc-500 line-clamp-1">{altTitles.join(' / ')}</p>
+          )}
+
+          {series.description && (
+            <p class="mt-6 max-w-4xl text-base md:text-lg leading-8 text-zinc-300 line-clamp-6">
+              {series.description}
+            </p>
+          )}
+
+          {genres.length > 0 && (
+            <div class="mt-6 flex flex-wrap gap-2">
+              {genres.slice(0, 12).map((g) => (
+                <a
+                  href={`/mangas?genre=${encodeURIComponent(g)}`}
+                  class="rounded-full bg-zinc-900/80 border border-zinc-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:border-accent/50 hover:text-accent transition-colors"
+                >
+                  {formatGenre(g)}
+                </a>
+              ))}
+            </div>
+          )}
+
+          <div class="mt-8 flex flex-wrap items-center gap-3">
+            {oldestChapter && (
+              <a
+                href={`/manga/${slug}/${oldestChapter.number}`}
+                class="inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-black uppercase tracking-widest text-zinc-950 hover:bg-accent transition-all"
+              >
+                Leer desde el inicio
+              </a>
+            )}
+            {latestChapter && (
+              <a
+                href={`/manga/${slug}/${latestChapter.number}`}
+                class="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/80 px-7 py-3.5 text-sm font-black uppercase tracking-widest text-white hover:border-accent/60 hover:text-accent transition-all"
+              >
+                Último cap. {latestChapter.number}
+              </a>
+            )}
+          </div>
+
+          {admin && (
+            <div class="mt-5 flex flex-wrap items-center gap-2">
+              <form method="POST" action={`/api/series/${series.slug}/adult`}>
+                <input type="hidden" name="value" value={series.isAdult ? '0' : '1'} />
+                <input type="hidden" name="redirect" value={`/manga/${series.slug}`} />
+                <button
+                  type="submit"
+                  class="text-xs font-semibold px-3 py-1.5 rounded-md border border-white/10 text-zinc-300 bg-ink-800 hover:border-accent hover:text-accent transition-colors"
+                >
+                  {series.isAdult ? 'Quitar +18' : 'Marcar +18'}
+                </button>
+              </form>
+              <form method="POST" action={`/api/series/${series.slug}/enrich`}>
+                <input type="hidden" name="redirect" value={`/manga/${series.slug}`} />
+                <button
+                  type="submit"
+                  class="text-xs font-semibold px-3 py-1.5 rounded-md border border-white/10 text-zinc-300 bg-ink-800 hover:border-accent/60 hover:text-accent transition-colors"
+                  title="Completar puntaje, año, autor y categorías"
+                >
+                  Completar datos
+                </button>
+              </form>
+            </div>
+          )}
+
+          {enrichStatus === 'ok' && (
+            <div class="mt-4 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              Datos actualizados desde MyAnimeList.
+            </div>
+          )}
+          {enrichStatus === 'not_found' && (
+            <div class="mt-4 text-xs px-3 py-2 rounded-md bg-accent/10 text-accent-300 border border-accent/30">
+              No se encontró una coincidencia para este título.
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="max-w-[1440px] mx-auto px-4 md:px-8 pb-16">
+    <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12">
+      <div class="hidden lg:block"></div>
+      <div>
+        <div class="flex items-end justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
+              Capítulos
+              <span class="align-middle text-sm font-black not-italic tracking-[0.16em] text-zinc-600">
+                {chapters.length} publicados
+              </span>
+            </h2>
+          </div>
+        </div>
+
+        <ChapterList
+          client:load
+          slug={slug}
+          chapters={chapters.map((ch) => ({
+            number: ch.number,
+            title: ch.title,
+            language: ch.language,
+            pageCount: ch.pageCount,
+            previewUrl: ch.previewUrl,
+            publishedAt: ch.publishedAt?.toISOString() ?? null,
+            downloadedAt: ch.downloadedAt?.toISOString() ?? null,
+          }))}
+        />
+      </div>
+    </div>
+  </section>
+</Base>

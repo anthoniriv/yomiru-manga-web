@@ -1,0 +1,255 @@
+---
+import Base from '../layouts/Base.astro';
+import MangaCard from '../components/MangaCard.astro';
+import SearchBar from '../components/SearchBar.tsx';
+import {
+  getCatalogFilters,
+  getCatalogSeries,
+  getCoverUrl,
+  type CatalogSort,
+} from '../lib/db';
+import { readShowAdult } from '../lib/nsfw';
+import { isAdmin } from '../lib/admin';
+import { formatGenre } from '../lib/labels';
+
+const PER_PAGE = 36;
+const showAdult = readShowAdult(Astro.cookies);
+const admin = isAdmin(Astro.cookies);
+const currentPath = Astro.url.pathname + Astro.url.search;
+
+const pageParam = Astro.url.searchParams.get('page');
+const currentPage = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
+const query = Astro.url.searchParams.get('q')?.trim() ?? '';
+const genre = Astro.url.searchParams.get('genre')?.trim() ?? '';
+const yearParam = Astro.url.searchParams.get('year');
+const year = yearParam ? parseInt(yearParam, 10) : undefined;
+const sortParam = Astro.url.searchParams.get('sort') ?? 'added';
+const sortOptions = ['added', 'updated', 'popular', 'rating', 'title'] as const;
+const sort = sortOptions.includes(sortParam as CatalogSort) ? sortParam as CatalogSort : 'added';
+const viewParam = Astro.url.searchParams.get('view') ?? 'grid';
+const view = viewParam === 'list' ? 'list' : 'grid';
+
+const [{ series, total }, filters] = await Promise.all([
+  getCatalogSeries(currentPage, PER_PAGE, {
+    showAdult,
+    query,
+    genre,
+    year: Number.isFinite(year) ? year : undefined,
+    sort,
+  }),
+  getCatalogFilters({ showAdult }),
+]);
+
+const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+const windowSize = Math.min(7, totalPages);
+const windowStart = totalPages <= 7
+  ? 1
+  : currentPage <= 4
+    ? 1
+    : currentPage >= totalPages - 3
+      ? totalPages - 6
+      : currentPage - 3;
+const pageWindow = Array.from({ length: windowSize }, (_, i) => windowStart + i);
+
+function hrefWith(next: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  Object.entries(next).forEach(([key, value]) => {
+    if (value == null || value === '') params.delete(key);
+    else params.set(key, String(value));
+  });
+  const search = params.toString();
+  return search ? `/mangas?${search}` : '/mangas';
+}
+---
+
+<Base title="Mangas">
+  <div class="max-w-[1600px] mx-auto px-4 md:px-8 pt-10 pb-12 space-y-8">
+    <section class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <div class="space-y-2">
+        <p class="text-accent text-[10px] font-black uppercase tracking-[0.28em]">Catálogo</p>
+        <h1 class="text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none text-white">
+          Todos los mangas
+        </h1>
+        <p class="text-sm text-zinc-500">
+          {total.toLocaleString()} series ordenadas por agregado reciente.
+        </p>
+      </div>
+      <div class="w-full lg:w-[420px]">
+        <SearchBar client:load />
+      </div>
+    </section>
+
+    <form
+      method="GET"
+      action="/mangas"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/50"
+    >
+      {query && <input type="hidden" name="q" value={query} />}
+      <input type="hidden" name="view" value={view} />
+
+      <label class="space-y-1">
+        <span class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Categoría</span>
+        <select name="genre" class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-accent">
+          <option value="">Todas</option>
+          {filters.genres.map((g) => (
+            <option value={g} selected={genre === g}>{formatGenre(g)}</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="space-y-1">
+        <span class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Año</span>
+        <select name="year" class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-accent">
+          <option value="">Todos</option>
+          {filters.years.map((y) => (
+            <option value={y} selected={year === y}>{y}</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="space-y-1">
+        <span class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Orden</span>
+        <select name="sort" class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-accent">
+          <option value="added" selected={sort === 'added'}>Recién agregados</option>
+          <option value="updated" selected={sort === 'updated'}>Actualizados</option>
+          <option value="popular" selected={sort === 'popular'}>Populares</option>
+          <option value="rating" selected={sort === 'rating'}>Mejor puntaje</option>
+          <option value="title" selected={sort === 'title'}>Título A-Z</option>
+        </select>
+      </label>
+
+      <div class="space-y-1">
+        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Vista</span>
+        <div class="grid grid-cols-2 gap-2">
+          <a
+            href={hrefWith({ view: 'grid', page: 1 })}
+            aria-label="Vista en cuadrícula"
+            title="Vista en cuadrícula"
+            class={`flex items-center justify-center rounded-lg border px-3 py-2.5 transition-colors ${
+              view === 'grid' ? 'bg-accent text-zinc-950 border-accent' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'
+            }`}
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+            </svg>
+          </a>
+          <a
+            href={hrefWith({ view: 'list', page: 1 })}
+            aria-label="Vista en lista"
+            title="Vista en lista"
+            class={`flex items-center justify-center rounded-lg border px-3 py-2.5 transition-colors ${
+              view === 'list' ? 'bg-accent text-zinc-950 border-accent' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'
+            }`}
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="flex items-end gap-2">
+        <button
+          type="submit"
+          class="w-full lg:w-auto rounded-lg bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-950 hover:bg-accent transition-colors"
+        >
+          Filtrar
+        </button>
+        <a
+          href="/mangas"
+          class="rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+        >
+          Limpiar
+        </a>
+      </div>
+    </form>
+
+    {series.length === 0 ? (
+      <div class="text-center py-24 text-zinc-500 border border-dashed border-white/10 rounded-2xl bg-ink-800/40">
+        <p class="text-5xl mb-4 text-accent">読</p>
+        <p class="text-lg text-zinc-300">No hay mangas con esos filtros.</p>
+      </div>
+    ) : view === 'grid' ? (
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+        {series.map((s) => (
+          <MangaCard
+            slug={s.slug}
+            title={s.title}
+            coverUrl={getCoverUrl(s)}
+            totalChapters={s.totalChapters}
+            rating={s.rating}
+            status={s.status}
+            author={s.author}
+            admin={admin}
+            isAdult={s.isAdult}
+            redirectTo={currentPath}
+          />
+        ))}
+      </div>
+    ) : (
+      <div class="space-y-3">
+        {series.map((s) => (
+          <a
+            href={`/manga/${s.slug}`}
+            class="group grid grid-cols-[72px_1fr_auto] gap-4 items-center rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3 hover:border-accent/40 hover:bg-zinc-900 transition-colors"
+          >
+            <img
+              src={getCoverUrl(s)}
+              alt={s.title}
+              loading="lazy"
+              class="w-[72px] aspect-[2/3] rounded-lg object-cover bg-zinc-800"
+              onerror="this.src='/placeholder-cover.svg'"
+            />
+            <div class="min-w-0">
+              <h2 class="text-lg font-black italic text-white line-clamp-1 group-hover:text-accent transition-colors">{s.title}</h2>
+              <p class="text-xs text-zinc-500 line-clamp-1">{s.sourceName}</p>
+              <div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                {s.year && <span>{s.year}</span>}
+                {s.totalChapters != null && <span>{s.totalChapters} capítulos</span>}
+                {s.rating != null && <span class="text-accent">★ {s.rating.toFixed(1)}</span>}
+              </div>
+            </div>
+            <span class="hidden sm:inline-flex text-[11px] font-black uppercase tracking-widest text-accent">Leer</span>
+          </a>
+        ))}
+      </div>
+    )}
+
+    {totalPages > 1 && (
+      <div class="flex items-center justify-center gap-2 pt-4">
+        {currentPage > 1 && (
+          <a
+            href={hrefWith({ page: currentPage - 1 })}
+            class="px-4 py-2 rounded-full border border-white/10 bg-ink-800/70 text-sm text-zinc-300 hover:border-accent/60 hover:text-white hover:bg-ink-800 transition-colors"
+          >
+            Anterior
+          </a>
+        )}
+
+        <div class="flex items-center gap-1">
+          {pageWindow.map((page) => (
+            <a
+              href={hrefWith({ page })}
+              class={`w-10 h-10 flex items-center justify-center rounded-full text-sm transition-colors ${
+                page === currentPage
+                  ? 'bg-accent text-zinc-950 font-bold shadow-glow-accent'
+                  : 'bg-ink-800/60 border border-white/5 text-zinc-400 hover:border-accent/60 hover:text-white'
+              }`}
+            >
+              {page}
+            </a>
+          ))}
+        </div>
+
+        {currentPage < totalPages && (
+          <a
+            href={hrefWith({ page: currentPage + 1 })}
+            class="px-4 py-2 rounded-full border border-white/10 bg-ink-800/70 text-sm text-zinc-300 hover:border-accent/60 hover:text-white hover:bg-ink-800 transition-colors"
+          >
+            Siguiente
+          </a>
+        )}
+      </div>
+    )}
+  </div>
+</Base>

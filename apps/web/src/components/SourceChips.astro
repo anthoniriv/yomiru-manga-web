@@ -1,0 +1,41 @@
+---
+export interface Props {
+  sources: Array<{ source: string; count: number }>;
+}
+const { sources } = Astro.props;
+
+function initials(name: string): string {
+  const clean = name.replace(/^www\./, '').replace(/\.(com|to|net|org|io|co|app)$/i, '');
+  const parts = clean.split(/[.\-_\s]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return clean.slice(0, 2).toUpperCase();
+}
+
+function prettyName(name: string): string {
+  return name
+    .replace(/^www\./, '')
+    .replace(/\.(com|to|net|org|io|co|app)$/i, '')
+    .replace(/[-_]/g, ' ')
+    .toUpperCase();
+}
+---
+
+{sources.length > 0 && (
+  <section class="animate-fade-in">
+    <div class="flex flex-wrap items-center justify-center gap-3 md:gap-4">
+      {sources.map((s) => (
+        <div
+          class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-full hover:border-accent/50 hover:bg-zinc-900 transition-all group shadow-2xl cursor-default"
+        >
+          <div class="w-8 h-8 rounded-full overflow-hidden border border-zinc-700 group-hover:border-accent/50 transition-colors bg-zinc-800 flex items-center justify-center text-zinc-200 text-[10px] font-black">
+            {initials(s.source)}
+          </div>
+          <span class="text-[10px] font-black text-white uppercase tracking-widest group-hover:text-accent transition-colors">
+            {prettyName(s.source)}
+          </span>
+          <span class="text-[10px] font-bold text-zinc-500 tabular-nums">{s.count}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+)}

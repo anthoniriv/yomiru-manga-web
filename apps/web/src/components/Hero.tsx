@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react';
 import { formatStatus } from '../lib/labels';
 
 export interface HeroSlide {
@@ -22,16 +22,54 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const goBy = useCallback((delta: number) => {
+    setIdx((i) => (i + delta + slides.length) % slides.length);
+  }, [slides.length]);
+
+  const goTo = useCallback((nextIdx: number) => {
+    setIdx((nextIdx + slides.length) % slides.length);
+  }, [slides.length]);
 
   useEffect(() => {
     if (paused || slides.length <= 1) return;
     timerRef.current = setInterval(() => {
-      setIdx((i) => (i + 1) % slides.length);
+      goBy(1);
     }, intervalMs);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [paused, slides.length, intervalMs]);
+  }, [goBy, paused, slides.length, intervalMs]);
+
+  const onTouchStart = (event: TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    setPaused(true);
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const onTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    setPaused(false);
+    if (!start || slides.length <= 1) return;
+
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (absX < 40 || absX < absY * 1.2) return;
+    goBy(dx < 0 ? 1 : -1);
+  };
+
+  const onTouchCancel = () => {
+    touchStartRef.current = null;
+    setPaused(false);
+  };
 
   if (slides.length === 0) return null;
   const current = slides[idx];
@@ -46,19 +84,19 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
       className="relative h-[620px] md:h-[680px] w-full bg-black overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
     >
       <div className="absolute inset-0">
-        {slides.map((s, i) => (
-          <img
-            key={s.slug}
-            src={s.backgroundUrl || s.coverUrl}
-            alt=""
-            aria-hidden="true"
-            className={`absolute inset-0 w-full h-full object-cover object-center blur-[1px] scale-105 transition-opacity duration-1000 ${
-              i === idx ? 'opacity-60' : 'opacity-0'
-            }`}
-          />
-        ))}
+        <img
+          key={current.slug}
+          src={current.backgroundUrl || current.coverUrl}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover object-center md:blur-[1px] scale-105 opacity-60 transition-opacity duration-700"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-zinc-950/5" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/45 to-zinc-950/10" />
         <div className="absolute inset-0 bg-black/10" />
@@ -155,7 +193,7 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
               <button
                 key={i}
                 type="button"
-                onClick={() => setIdx(i)}
+                onClick={() => goTo(i)}
                 className={`h-1 transition-all duration-500 rounded-full ${
                   i === idx ? 'w-8 bg-accent' : 'w-2 bg-zinc-800 hover:bg-zinc-600'
                 }`}
@@ -166,7 +204,7 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
+              onClick={() => goBy(-1)}
               className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 hover:border-accent/40 transition-all"
               aria-label="Anterior"
             >
@@ -174,7 +212,7 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
             </button>
             <button
               type="button"
-              onClick={() => setIdx((i) => (i + 1) % slides.length)}
+              onClick={() => goBy(1)}
               className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 hover:border-accent/40 transition-all"
               aria-label="Siguiente"
             >

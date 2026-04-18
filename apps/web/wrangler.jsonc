@@ -4,6 +4,7 @@
   "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
+  "keep_vars": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"

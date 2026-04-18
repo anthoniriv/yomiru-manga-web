@@ -44,7 +44,7 @@ const currentPath = Astro.url.pathname + Astro.url.search;
         scroll-snap-type: x proximity;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
-        touch-action: pan-x pan-y;
+        touch-action: pan-x;
       }
       .snap-row .snap-item { scroll-snap-align: start; }
 
@@ -139,6 +139,7 @@ const currentPath = Astro.url.pathname + Astro.url.search;
         </a>
         <div class="flex items-center gap-4 md:gap-6">
           <a href="/mangas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Catálogo</a>
+          <a href="/preguntas-respuestas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Preguntas</a>
           <div class="hidden md:block h-6 w-px bg-zinc-800"></div>
           <form method="POST" action="/api/nsfw" class="flex items-center">
             <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />
@@ -164,6 +165,48 @@ const currentPath = Astro.url.pathname + Astro.url.search;
       <slot />
     </main>
 
+    <div
+      id="yomiru-disclaimer"
+      class="fixed inset-x-0 bottom-0 z-[90] hidden px-3 pb-3 sm:px-6 sm:pb-6"
+      aria-live="polite"
+    >
+      <div class="mx-auto max-w-4xl rounded-2xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/70 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center">
+          <span class="text-accent font-black text-lg leading-none">!</span>
+        </div>
+        <p class="flex-1 text-[11px] sm:text-xs leading-relaxed text-zinc-300">
+          <span class="font-black uppercase tracking-widest text-white block sm:inline">Aviso · Disclaimer.</span>
+          <span class="block sm:inline sm:ml-1">
+            Yomiru es un agregador de enlaces. No alojamos archivos con copyright — todos los derechos pertenecen a sus respectivos autores. Al continuar aceptas el uso personal y no comercial del sitio.
+          </span>
+        </p>
+        <button
+          id="yomiru-disclaimer-accept"
+          type="button"
+          class="flex-shrink-0 rounded-full bg-accent px-5 py-2 text-[11px] font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
+        >
+          Aceptar
+        </button>
+      </div>
+    </div>
+
+    <script is:inline>
+      (function () {
+        const KEY = 'yomiru:disclaimer:v1';
+        const el = document.getElementById('yomiru-disclaimer');
+        const btn = document.getElementById('yomiru-disclaimer-accept');
+        if (!el || !btn) return;
+        try {
+          if (localStorage.getItem(KEY) === '1') return;
+        } catch {}
+        el.classList.remove('hidden');
+        btn.addEventListener('click', () => {
+          try { localStorage.setItem(KEY, '1'); } catch {}
+          el.classList.add('hidden');
+        });
+      })();
+    </script>
+
     <footer class="bg-zinc-950 border-t border-zinc-900 pt-12 pb-8 mt-16">
       <div class="max-w-7xl mx-auto px-4 md:px-8">
         <div class="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">
@@ -177,6 +220,7 @@ const currentPath = Astro.url.pathname + Astro.url.search;
           </div>
           <div class="flex gap-6 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
             <a href="/mangas" class="hover:text-white transition-colors">Catálogo</a>
+            <a href="/preguntas-respuestas" class="hover:text-white transition-colors">Preguntas</a>
           </div>
         </div>
         <p class="mx-auto max-w-3xl border-t border-zinc-900 pt-6 text-center text-[10px] font-bold uppercase tracking-[0.16em] leading-relaxed text-zinc-600">

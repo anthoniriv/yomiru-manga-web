@@ -171,31 +171,6 @@ const statusKey = series.status?.toLowerCase() ?? '';
             )}
           </div>
 
-          {admin && (
-            <div class="mt-5 flex flex-wrap items-center gap-2">
-              <form method="POST" action={`/api/series/${series.slug}/adult`}>
-                <input type="hidden" name="value" value={series.isAdult ? '0' : '1'} />
-                <input type="hidden" name="redirect" value={`/manga/${series.slug}`} />
-                <button
-                  type="submit"
-                  class="text-xs font-semibold px-3 py-1.5 rounded-md border border-white/10 text-zinc-300 bg-ink-800 hover:border-accent hover:text-accent transition-colors"
-                >
-                  {series.isAdult ? 'Quitar +18' : 'Marcar +18'}
-                </button>
-              </form>
-              <form method="POST" action={`/api/series/${series.slug}/enrich`}>
-                <input type="hidden" name="redirect" value={`/manga/${series.slug}`} />
-                <button
-                  type="submit"
-                  class="text-xs font-semibold px-3 py-1.5 rounded-md border border-white/10 text-zinc-300 bg-ink-800 hover:border-accent/60 hover:text-accent transition-colors"
-                  title="Completar puntaje, año, autor y categorías"
-                >
-                  Completar datos
-                </button>
-              </form>
-            </div>
-          )}
-
           {enrichStatus === 'ok' && (
             <div class="mt-4 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
               Datos actualizados desde MyAnimeList.

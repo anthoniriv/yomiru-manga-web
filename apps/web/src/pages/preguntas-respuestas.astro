@@ -1,0 +1,155 @@
+---
+import Base from '../layouts/Base.astro';
+
+const faqs = [
+  {
+    category: 'Uso',
+    items: [
+      {
+        question: '¿Qué es Yomiru?',
+        answer:
+          'Yomiru es un lector personal que organiza mangas, capítulos y enlaces disponibles desde fuentes externas.',
+      },
+      {
+        question: '¿Yomiru aloja mangas o archivos con copyright?',
+        answer:
+          'No. Yomiru no almacena archivos con copyright en sus servidores. La plataforma funciona como agregador de noticias y enlaces, y cada obra pertenece a sus respectivos autores.',
+      },
+      {
+        question: '¿Por qué algunos capítulos no aparecen?',
+        answer:
+          'Las fuentes pueden cambiar su disponibilidad, estructura o permisos. Cuando eso ocurre, algunos capítulos pueden tardar en actualizarse o dejar de mostrarse.',
+      },
+    ],
+  },
+  {
+    category: 'Lectura',
+    items: [
+      {
+        question: '¿Cómo empiezo a leer un manga?',
+        answer:
+          'Entra al catálogo, abre una serie y elige “Leer desde el inicio” o un capítulo específico desde la lista.',
+      },
+      {
+        question: '¿Qué significa “Último cap.”?',
+        answer:
+          'Es el capítulo más reciente disponible para esa serie dentro de Yomiru.',
+      },
+      {
+        question: '¿La carga de imágenes es progresiva?',
+        answer:
+          'Sí. En el lector, las primeras páginas cargan de inmediato y el resto carga de forma diferida mientras avanzas.',
+      },
+    ],
+  },
+  {
+    category: 'Contenido +18',
+    items: [
+      {
+        question: '¿Cómo funciona el botón +18?',
+        answer:
+          'Cuando está apagado, el contenido marcado como +18 se oculta. Cuando está encendido, ese contenido vuelve a aparecer en el catálogo y en las páginas de serie.',
+      },
+      {
+        question: '¿El ajuste +18 se guarda?',
+        answer:
+          'Sí. El navegador guarda tu preferencia para mantener el mismo estado en futuras visitas.',
+      },
+      {
+        question: '¿Por qué una serie puede estar marcada como +18?',
+        answer:
+          'La marca se usa para filtrar contenido adulto o sensible según la información disponible de la serie.',
+      },
+    ],
+  },
+  {
+    category: 'Cuenta y privacidad',
+    items: [
+      {
+        question: '¿Necesito una cuenta para leer?',
+        answer:
+          'No necesitas iniciar sesión para explorar y leer el contenido disponible públicamente.',
+      },
+      {
+        question: '¿Qué datos guarda la web?',
+        answer:
+          'La web puede guardar preferencias locales, como el estado del filtro +18. Las políticas de privacidad y términos aplican al uso general de Yomiru.',
+      },
+      {
+        question: '¿Dónde está la gestión del sitio?',
+        answer:
+          'La gestión no aparece en la navegación pública. Solo se accede escribiendo directamente la ruta /admin.',
+      },
+    ],
+  },
+  {
+    category: 'Soporte',
+    items: [
+      {
+        question: '¿Qué hago si una portada o capítulo falla?',
+        answer:
+          'Prueba recargar la página. Si el problema continúa, puede deberse a cambios en la fuente original o a una actualización pendiente.',
+      },
+      {
+        question: '¿Puedo pedir que agreguen una serie?',
+        answer:
+          'Sí. Las solicitudes dependen de disponibilidad en fuentes externas y de que la serie pueda indexarse correctamente.',
+      },
+      {
+        question: '¿Cómo reporto un problema legal o de copyright?',
+        answer:
+          'Usa el canal de soporte publicado para Yomiru e incluye la serie, capítulo o enlace relacionado con el reporte.',
+      },
+    ],
+  },
+];
+---
+
+<Base
+  title="Preguntas y respuestas"
+  description="Preguntas frecuentes sobre Yomiru, lectura, contenido +18, privacidad y soporte."
+>
+  <section class="border-b border-zinc-900 bg-zinc-950">
+    <div class="mx-auto max-w-5xl px-4 py-16 md:px-8 md:py-24">
+      <p class="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Ayuda</p>
+      <h1 class="mt-3 text-4xl font-black italic uppercase leading-none tracking-tighter text-white md:text-6xl">
+        Preguntas y respuestas
+      </h1>
+      <p class="mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+        Respuestas rápidas sobre lectura, filtros, capítulos y uso responsable de Yomiru.
+      </p>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-5xl px-4 py-12 md:px-8 md:py-16">
+    <div class="space-y-12">
+      {faqs.map((group) => (
+        <div class="grid gap-5 md:grid-cols-[180px_1fr] md:gap-8">
+          <div>
+            <p class="sticky top-24 text-[10px] font-black uppercase tracking-[0.22em] text-accent">
+              {group.category}
+            </p>
+          </div>
+          <div class="divide-y divide-zinc-900 border-y border-zinc-900">
+            {group.items.map((item) => (
+              <details class="group py-5">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
+                  <span class="text-base font-black text-white md:text-lg">
+                    {item.question}
+                  </span>
+                  <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition-colors group-open:border-accent group-open:text-accent">
+                    <span class="group-open:hidden">+</span>
+                    <span class="hidden group-open:inline">-</span>
+                  </span>
+                </summary>
+                <p class="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+</Base>

@@ -11,10 +11,8 @@ export type ChapterWithPreview = Chapter & { previewUrl: string | null };
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
 
 export function getCoverUrl(s: Pick<Series, 'coverSourceUrl' | 'coverPath'>): string {
+  if (s.coverPath) return getStorageUrl(s.coverPath);
   if (s.coverSourceUrl) return s.coverSourceUrl;
-  if (s.coverPath) {
-    return getStorageUrl(s.coverPath);
-  }
   return '/placeholder-cover.svg';
 }
 

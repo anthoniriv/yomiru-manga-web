@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { normalize } from 'node:path';
-import { r2Get } from '@yomiru/r2';
 
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 
@@ -29,7 +28,7 @@ export const GET: APIRoute = async ({ params, redirect }) => {
     return redirect(`${R2_PUBLIC_URL}/${key}`, 302);
   }
 
-  // Fallback: proxy through R2 S3 API
+  const { r2Get } = await import('@yomiru/r2');
   const stream = await r2Get(key);
   if (!stream) return new Response('Not Found', { status: 404 });
 

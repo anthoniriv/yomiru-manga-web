@@ -325,9 +325,9 @@ export async function getChapterByNumber(
   const rows = await getPgDb()
     .select()
     .from(chapters)
-    .where(eq(chapters.seriesId, seriesId))
-    .limit(500);
-  return rows.find((c) => c.number === number);
+    .where(and(eq(chapters.seriesId, seriesId), eq(chapters.number, number))!)
+    .limit(1);
+  return rows[0];
 }
 
 export async function getPagesByChapter(chapterId: string): Promise<Page[]> {

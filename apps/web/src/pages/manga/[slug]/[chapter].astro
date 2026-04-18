@@ -15,7 +15,10 @@ if (series.isAdult && !showAdult) return Astro.redirect('/');
 const chapterNum = parseFloat(chapterParam);
 if (isNaN(chapterNum)) return new Response('Not Found', { status: 404 });
 
-const chapter = await getChapterByNumber(series.id, chapterNum);
+const [chapter, allChapters] = await Promise.all([
+  getChapterByNumber(series.id, chapterNum),
+  getChaptersBySeries(series.id),
+]);
 if (!chapter) return new Response('Not Found', { status: 404 });
 
 if (chapter.downloadStatus !== 'completed') {
@@ -23,9 +26,6 @@ if (chapter.downloadStatus !== 'completed') {
 }
 
 const pages = await getPagesByChapter(chapter.id);
-
-// Build prev/next navigation
-const allChapters = await getChaptersBySeries(series.id);
 const completedChapters = allChapters.filter(c => c.downloadStatus === 'completed');
 const currentIdx = completedChapters.findIndex(c => c.number === chapterNum);
 const prevChapter = currentIdx > 0 ? completedChapters[currentIdx - 1] : null;

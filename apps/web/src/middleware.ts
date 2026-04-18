@@ -9,9 +9,10 @@ declare global {
 // pero no los copia a process.env (puede estar congelado en Workers).
 // Guardamos el env en globalThis para que paquetes del monorepo lo lean.
 export const onRequest = defineMiddleware((context, next) => {
-  const runtimeEnv = (
-    context.locals as { runtime?: { env?: Record<string, unknown> } }
-  ).runtime?.env;
+  const runtime = (context.locals as { runtime?: { env?: Record<string, unknown> } }).runtime;
+  const runtimeEnv = runtime?.env;
+  console.log('[mw] locals keys:', Object.keys(context.locals));
+  console.log('[mw] runtime?', !!runtime, 'env keys:', runtimeEnv ? Object.keys(runtimeEnv) : 'none');
   if (runtimeEnv) {
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(runtimeEnv)) {

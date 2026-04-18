@@ -29,7 +29,8 @@ function loadEnvFile(): void {
 export function getPgDb(): PgDB {
   if (_db) return _db;
   loadEnvFile();
-  const url = process.env.DATABASE_URL;
+  const globalEnv = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
+  const url = process.env.DATABASE_URL ?? globalEnv?.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL env var missing');
   _sql = postgres(url, {
     max: 10,

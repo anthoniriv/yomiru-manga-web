@@ -5,8 +5,13 @@ declare global {
   var __ENV__: Record<string, string> | undefined;
 }
 
-const CACHEABLE_PATHS = [/^\/$/, /^\/mangas/, /^\/manga\/[^/]+$/];
-const CACHE_TTL = 30;
+const CACHEABLE_PATHS = [
+  /^\/$/,
+  /^\/mangas/,
+  /^\/manga\/[^/]+$/,
+  /^\/manga\/[^/]+\/[^/]+/, // chapter readers
+];
+const CACHE_TTL = 300;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const runtimeEnv = (

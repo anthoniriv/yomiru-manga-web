@@ -283,13 +283,37 @@ export async function getSeriesBackdropUrl(seriesId: string): Promise<string | n
 
 export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<string, string>> {
   const uniqueIds = [...new Set(seriesIds.filter(Boolean))];
-  const entries = await Promise.all(
-    uniqueIds.map(async (seriesId) => {
-      const url = await getSeriesBackdropUrl(seriesId);
-      return url ? ([seriesId, url] as const) : null;
-    }),
+  if (uniqueIds.length === 0) return new Map();
+
+  const idList = sql.join(
+    uniqueIds.map((id) => sql`${id}`),
+    sql`, `,
   );
-  return new Map(entries.filter((entry): entry is readonly [string, string] => entry !== null));
+  const result = await getPgDb().execute<{
+    series_id: string;
+    storage_path: string | null;
+    source_url: string | null;
+  }>(sql`
+    SELECT DISTINCT ON (${chapters.seriesId})
+      ${chapters.seriesId} AS series_id,
+      ${pages.storagePath} AS storage_path,
+      ${pages.sourceUrl} AS source_url
+    FROM ${chapters}
+    INNER JOIN ${pages} ON ${pages.chapterId} = ${chapters.id}
+    WHERE ${chapters.seriesId} IN (${idList})
+      AND ${chapters.downloadStatus} = 'completed'
+      AND ${pages.storagePath} IS NOT NULL
+      AND ${pages.idx} > 0
+    ORDER BY ${chapters.seriesId}, ${chapters.number} DESC, ${pages.idx} ASC
+  `);
+
+  const rows = (result as unknown as { rows?: typeof result }).rows ?? (result as unknown as typeof result);
+  const map = new Map<string, string>();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const url = r.storage_path ? getStorageUrl(r.storage_path) : r.source_url;
+    if (url) map.set(r.series_id, url);
+  }
+  return map;
 }
 
 export async function getChapterByNumber(

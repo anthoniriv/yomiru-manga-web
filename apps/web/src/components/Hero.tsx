@@ -37,8 +37,9 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
   const current = slides[idx];
   const currentStatus = formatStatus(current.status);
   const titleParts = current.title.split(' ');
-  const titleHead = titleParts.slice(0, -1).join(' ');
-  const titleTail = titleParts.length > 1 ? titleParts[titleParts.length - 1] : '';
+  const isMultiWord = titleParts.length > 1;
+  const titleHead = isMultiWord ? titleParts.slice(0, -1).join(' ') : current.title;
+  const titleTail = isMultiWord ? titleParts[titleParts.length - 1] : '';
 
   return (
     <section
@@ -85,7 +86,7 @@ export default function Hero({ slides, intervalMs = 7000 }: Props) {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white italic leading-tight tracking-tighter uppercase drop-shadow-2xl line-clamp-2">
                 {titleHead}
                 {titleTail && (
-                  <span className="text-outline-white text-transparent ml-2">{titleTail}</span>
+                  <span className="text-accent ml-2">{titleTail}</span>
                 )}
               </h1>
             </div>

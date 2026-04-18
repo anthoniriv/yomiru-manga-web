@@ -13,6 +13,7 @@ const CACHEABLE_PATHS = [
 ];
 const FRESH_TTL = 300; // 5 min — dentro de esto, HIT instant sin refresh
 const STALE_TTL = 86400; // 24h — se sirve stale y refresca en background
+const CACHE_VERSION = 'v2'; // bump para invalidar cache edge
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const runtimeEnv = (
@@ -42,7 +43,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   if (!cache) return next();
 
-  const cacheKey = new Request(url.toString(), { method: 'GET' });
+  const cacheKey = new Request(`${url.toString()}#${CACHE_VERSION}`, { method: 'GET' });
   const execCtx = (
     context.locals as { runtime?: { ctx?: { waitUntil?: (p: Promise<unknown>) => void } } }
   ).runtime?.ctx;

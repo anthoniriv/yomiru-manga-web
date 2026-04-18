@@ -1,6 +1,6 @@
 ---
 import ChapterNav from '../../../components/ChapterNav.tsx';
-import { getSeriesBySlug, getChaptersBySeries, getChapterByNumber, getPagesByChapter } from '../../../lib/db';
+import { getSeriesBySlug, getChaptersBySeries, getChapterByNumber, getPagesByChapter, getStorageUrl } from '../../../lib/db';
 import { readShowAdult } from '../../../lib/nsfw';
 
 const { slug, chapter: chapterParam } = Astro.params;
@@ -181,7 +181,7 @@ const nextUrl = nextChapter ? `/manga/${slug}/${nextChapter.number}` : null;
       ) : (
         <div class="flex flex-col gap-0.5">
           {pages.map((page, i) => {
-            const src = page.storagePath ? `/media/${page.storagePath}` : (page.sourceUrl ?? '');
+            const src = page.storagePath ? getStorageUrl(page.storagePath) : (page.sourceUrl ?? '');
             const ratioStyle = page.width && page.height ? `aspect-ratio: ${page.width} / ${page.height}` : '';
             return (
               <div class="yomiru-img-wrap" style={ratioStyle}>

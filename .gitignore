@@ -14,6 +14,8 @@ android/
 *.log
 # Datos locales / caché (puede ser muy grande; no versionar)
 storage/
+# Salida del adaptador Astro → Vercel (regenerable)
+.vercel/
 .idea/
 .vscode/*
 !.vscode/extensions.json

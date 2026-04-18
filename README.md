@@ -40,6 +40,37 @@ Copia los `.env` que necesite cada app o paquete (por ejemplo variables de Supab
 
 La carpeta `storage/` (caché, logs, artefactos grandes) está ignorada por Git y no se sube al remoto.
 
+## Despliegue en Vercel (`apps/web`)
+
+El sitio Astro usa SSR (`output: 'server'`) y el adaptador **`@astrojs/vercel`**. El build de producción es `npm run web:build` desde la raíz del monorepo.
+
+### En el dashboard de Vercel
+
+1. **New Project** → importa el repo de GitHub.
+2. **Root Directory:** `apps/web` (así Vercel detecta Astro y `astro.config.mjs`).
+3. **Install Command** (workspaces en la raíz del repo):
+
+   `cd ../.. && npm install`
+
+4. **Build Command:**
+
+   `cd ../.. && npm run web:build`
+
+5. **Node.js:** en *Settings → Environment Variables* añade `NODE_VERSION` = `22` (o la misma que [`.nvmrc`](./.nvmrc)), alineada con `engines` de `@yomiru/web`.
+
+### Variables de entorno (producción)
+
+Configúralas en Vercel para el runtime del servidor:
+
+| Variable | Uso |
+|----------|-----|
+| `DATABASE_URL` | Postgres (p. ej. Supabase); obligatoria para el catálogo y páginas que consultan la BD. |
+| `R2_PUBLIC_URL` | URL pública del bucket/CDN; si está definida, las imágenes van directo al CDN. |
+| `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Necesarias si sirves media vía R2 sin URL pública (proxy `/media/...`). |
+| `ADMIN_SECRET` | Autenticación de rutas `/admin` y APIs de administración. |
+
+Tras el primer despliegue, revisa los logs de la función serverless si algo falla al conectar a la BD o a R2.
+
 ## Estructura
 
 - `apps/mobile` — App React Native (Expo)

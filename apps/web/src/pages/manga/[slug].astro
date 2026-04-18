@@ -24,12 +24,14 @@ if (series.isAdult && !showAdult && !admin) {
   return Astro.redirect('/');
 }
 
-const chapters = await getChaptersWithPreviewsBySeries(series.id, true);
+const [chapters, genres, backgroundUrl] = await Promise.all([
+  getChaptersWithPreviewsBySeries(series.id, true),
+  getSeriesGenres(series.id),
+  getSeriesBackdropUrl(series.id),
+]);
 const oldestChapter = chapters[0] ?? null;
 const latestChapter = chapters[chapters.length - 1] ?? null;
-const genres = await getSeriesGenres(series.id);
 const coverUrl = getCoverUrl(series);
-const backgroundUrl = await getSeriesBackdropUrl(series.id);
 const enrichStatus = Astro.url.searchParams.get('enrich');
 
 let altTitles: string[] = [];

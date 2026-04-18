@@ -9,5 +9,8 @@
     "directory": "./dist",
     "binding": "ASSETS"
   },
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "7aa831cb9f9e47d9996f677e5ab0585b" }
+  ],
   "observability": { "enabled": true }
 }

@@ -37,7 +37,7 @@ export function getPgDb(): PgDB {
   const url = process.env.DATABASE_URL ?? globalEnv?.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL env var missing');
   const sql = postgres(url, {
-    max: isWorkers ? 1 : 10,
+    max: isWorkers ? 5 : 10,
     prepare: false, // required for Supabase transaction pooler (port 6543)
     fetch_types: false,
     idle_timeout: isWorkers ? 20 : undefined,

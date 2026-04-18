@@ -8,7 +8,10 @@ export type Chapter = typeof chapters.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type ChapterWithPreview = Chapter & { previewUrl: string | null };
 
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
+function r2PublicUrl(): string {
+  const globalEnv = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
+  return process.env.R2_PUBLIC_URL ?? globalEnv?.R2_PUBLIC_URL ?? '';
+}
 
 export function getCoverUrl(s: Pick<Series, 'coverSourceUrl' | 'coverPath'>): string {
   if (s.coverPath) return getStorageUrl(s.coverPath);
@@ -17,7 +20,8 @@ export function getCoverUrl(s: Pick<Series, 'coverSourceUrl' | 'coverPath'>): st
 }
 
 export function getStorageUrl(path: string): string {
-  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL}/${path}`;
+  const base = r2PublicUrl();
+  if (base) return `${base}/${path}`;
   return `/media/${path}`;
 }
 

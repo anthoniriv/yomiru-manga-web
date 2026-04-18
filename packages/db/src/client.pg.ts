@@ -26,18 +26,28 @@ function loadEnvFile(): void {
   }
 }
 
+const isWorkers =
+  typeof (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent === 'string' &&
+  (globalThis as { navigator: { userAgent: string } }).navigator.userAgent.includes('Cloudflare');
+
 export function getPgDb(): PgDB {
-  if (_db) return _db;
+  if (_db && !isWorkers) return _db;
   loadEnvFile();
   const globalEnv = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
   const url = process.env.DATABASE_URL ?? globalEnv?.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL env var missing');
-  _sql = postgres(url, {
-    max: 10,
+  const sql = postgres(url, {
+    max: isWorkers ? 1 : 10,
     prepare: false, // required for Supabase transaction pooler (port 6543)
+    fetch_types: false,
+    idle_timeout: isWorkers ? 20 : undefined,
   });
-  _db = drizzle(_sql, { schema });
-  return _db;
+  const db = drizzle(sql, { schema });
+  if (!isWorkers) {
+    _sql = sql;
+    _db = db;
+  }
+  return db;
 }
 
 export async function closePgDb(): Promise<void> {

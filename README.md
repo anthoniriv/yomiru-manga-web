@@ -28,7 +28,8 @@ Copia los `.env` que necesite cada app o paquete (por ejemplo variables de Supab
 | `npm run backend` | Backend (`@yomiru/backend`) |
 | `npm run backend:lan` | Backend escuchando en `0.0.0.0` |
 | `npm run web` | Sitio Astro en el puerto 3000 (`@yomiru/web`) |
-| `npm run web:build` | Build de producción del sitio web |
+| `npm run web:build` | Build de producción del sitio web (adaptador **Vercel**) |
+| `npm run web:build:cf` | Build para **Cloudflare Pages** (`astro.cloudflare.mjs`) |
 | `npm run shared:build` | Compila `@yomiru/shared` |
 | `npm run db:generate` / `db:migrate` / `db:studio` | Tareas de Drizzle/DB (`@yomiru/db`) |
 | `npm run ingestor` / `ingestor:dev` | Worker / dev del ingestor |
@@ -70,6 +71,30 @@ Configúralas en Vercel para el runtime del servidor:
 | `ADMIN_SECRET` | Autenticación de rutas `/admin` y APIs de administración. |
 
 Tras el primer despliegue, revisa los logs de la función serverless si algo falla al conectar a la BD o a R2.
+
+## Despliegue en Cloudflare Pages (`apps/web`)
+
+Alternativa al plan de pago de Vercel con repos privados de organización: el mismo proyecto tiene un segundo config **`astro.cloudflare.mjs`** con **`@astrojs/cloudflare`**.
+
+### En el dashboard de Cloudflare (Pages)
+
+1. **Workers & Pages** → **Create** → **Connect to Git** y elige el repositorio (personal o el que permita el plan gratuito).
+2. **Root directory:** déjalo **vacío** o **`.`** (raíz del repositorio). **No pongas solo `apps/web`:** si la raíz es `apps/web`, `npm install` no instala bien los workspaces (`@yomiru/db`, etc.) y el build falla.
+3. **Build configuration:**
+   - **Framework preset:** `None` (recomendado para monorepos).
+   - **Install command:** `npm install` (por defecto; debe ejecutarse en la raíz del repo).
+   - **Build command:** `npm run web:build:cf`
+   - **Build output directory:** `apps/web/dist`
+4. Si por alguna razón **tienes** que usar **Root directory = `apps/web`**, entonces el **Install command** tiene que ser `cd ../.. && npm install` y el **Build command** `npm run web:build:cf` (ese script también existe en `apps/web/package.json` como alias al build de Cloudflare).
+5. **Environment variables:** las mismas que en Vercel (`DATABASE_URL`, `R2_*`, `ADMIN_SECRET`, `R2_PUBLIC_URL`, etc.) en el entorno **Production** (y Preview si quieres).
+
+Node: en *Settings → Environment variables* puedes fijar `NODE_VERSION` = `22` si el build lo pide.
+
+### Avisos importantes (Cloudflare Workers)
+
+- El runtime **no es Node completo**: rutas que usan **Postgres** o **R2 con el SDK AWS** pueden necesitar pruebas en producción. Si Postgres falla, Cloudflare ofrece **[Hyperdrive](https://developers.cloudflare.com/hyperdrive/)** para conectar a bases SQL desde Workers.
+- El build puede advertir por **sesiones / KV** (`SESSION`): si no usas sesiones de Astro con KV, suele ignorarse; si hace falta, crea un namespace KV en Cloudflare y enlázalo como te indique la documentación del adaptador.
+- El build por defecto sigue siendo **`npm run web:build`** (Vercel). Cloudflare usa **`npm run web:build:cf`**.
 
 ## Estructura
 

@@ -16,6 +16,7 @@ android/
 storage/
 # Salida del adaptador Astro → Vercel (regenerable)
 .vercel/
+.wrangler/
 .idea/
 .vscode/*
 !.vscode/extensions.json

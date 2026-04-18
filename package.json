@@ -22,7 +22,8 @@
     "redis:down": "docker compose down",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "web": "npm run dev --workspace=@yomiru/web -- --port 3000 --host",
-    "web:build": "npm run build --workspace=@yomiru/web"
+    "web:build": "npm run build --workspace=@yomiru/web",
+    "web:build:cf": "npm run build:cloudflare --workspace=@yomiru/web"
   },
   "engines": {
     "node": ">=20.0.0"

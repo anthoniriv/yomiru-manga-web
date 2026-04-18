@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev --port 3000",
     "build": "astro build",
+    "build:cloudflare": "astro build --config astro.cloudflare.mjs",
+    "web:build:cf": "astro build --config astro.cloudflare.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -23,10 +25,12 @@
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
+    "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/vercel": "^9.0.5",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "wrangler": "^4.83.0"
   }
 }

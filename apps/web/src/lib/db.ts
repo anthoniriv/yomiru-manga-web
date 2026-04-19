@@ -510,6 +510,7 @@ export async function getSeriesPageBundle(
 ): Promise<SeriesPageBundle | null> {
   const db = getPgDb();
 
+  try {
   const [seriesRow, chapterRows, genreRows, backdropRow] = await timed(
     `getSeriesPageBundle(${slug})`,
     async () =>
@@ -586,6 +587,10 @@ export async function getSeriesPageBundle(
     genres: genreRows.map((r) => r.genre).filter(Boolean),
     backgroundUrl,
   };
+  } catch (err) {
+    console.error(`[ERR] getSeriesPageBundle(${slug}) failed:`, err instanceof Error ? err.stack ?? err.message : err);
+    throw err;
+  }
 }
 
 export interface ChapterPageBundle {
@@ -603,6 +608,7 @@ export async function getChapterPageBundle(
 ): Promise<ChapterPageBundle | null> {
   const db = getPgDb();
 
+  try {
   const [seriesRow, chapterRow, allChaptersRow] = await timed(
     `getChapterPageBundle(${slug},${chapterNumber})`,
     async () =>
@@ -660,4 +666,8 @@ export async function getChapterPageBundle(
     allCompletedChapters: allChaptersRow,
     pages: chapterPages,
   };
+  } catch (err) {
+    console.error(`[ERR] getChapterPageBundle(${slug},${chapterNumber}) failed:`, err instanceof Error ? err.stack ?? err.message : err);
+    throw err;
+  }
 }

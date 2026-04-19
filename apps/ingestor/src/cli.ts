@@ -6,10 +6,13 @@ import {
   closeQueues,
 } from './queues.js';
 import { closeRedis } from './redis.js';
-import { closeDb, getDb, series, chapters, pages } from '@yomiru/db';
+import { closeDb, getDb, getPgDb, pgSchema, series, chapters, pages } from '@yomiru/db';
 import { eq, sql } from 'drizzle-orm';
 import { config } from './config.js';
 import { resetInvalidDownloadedChapters, setChapterStatus } from './repo.js';
+
+const pgSeries = pgSchema.series;
+const pgChapters = pgSchema.chapters;
 
 function readFlag(args: string[], name: string): string | undefined {
   const prefix = `--${name}=`;
@@ -51,17 +54,16 @@ async function cmdResync(args: string[]) {
 }
 
 async function cmdRetryFailed() {
-  const db = getDb();
-  const rows = db
-    .select()
-    .from(chapters)
-    .where(eq(chapters.downloadStatus, 'failed'))
-    .all();
+  const db = getPgDb();
+  const rows = await db
+    .select({ id: pgChapters.id })
+    .from(pgChapters)
+    .where(eq(pgChapters.downloadStatus, 'failed'));
   const queue = chapterQueue();
   for (const ch of rows) {
     await queue.add('download', { chapterId: ch.id }, { jobId: `ch-${ch.id}-retry-${Date.now()}` });
   }
-  console.log(`[cli] requeued ${rows.length} failed chapters`);
+  console.log(`[cli] requeued ${rows.length} failed chapters (PG)`);
 }
 
 async function cmdCatalog(args: string[]) {

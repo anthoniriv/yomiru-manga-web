@@ -149,13 +149,30 @@ export async function searchMal(query: string, opts: { debug?: boolean } = {}): 
   return normalize(best.entry);
 }
 
+const LOCALE_JUNK = new Set(['es', 'en', 'jp', 'ja', 'ko', 'zh', 'cn', 'fr', 'de', 'it', 'pt', 'ru']);
+
 export async function findMalForSeries(
   title: string,
   altTitles: string[] = [],
   opts: { debug?: boolean } = {},
 ): Promise<MalResult | null> {
-  const candidates = [title, ...altTitles].map((t) => t.trim()).filter(Boolean);
-  for (const c of candidates.slice(0, 3)) {
+  const candidates = [title, ...altTitles]
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => {
+      const n = normTitle(t);
+      if (n.length < 4) return false;
+      if (LOCALE_JUNK.has(n)) return false;
+      return true;
+    });
+  const seen = new Set<string>();
+  const unique = candidates.filter((t) => {
+    const n = normTitle(t);
+    if (seen.has(n)) return false;
+    seen.add(n);
+    return true;
+  });
+  for (const c of unique.slice(0, 3)) {
     try {
       const hit = await searchMal(c, opts);
       if (hit) return hit;

@@ -111,9 +111,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 function buildCacheable(res: Response): Response {
   const out = new Response(res.body, res);
+  // max-age=0: browser siempre revalida (evita HTML con _astro/CSS stale tras redeploy).
+  // s-maxage: edge CF sirve cached fresco FRESH_TTL, stale hasta STALE_TTL.
   out.headers.set(
     'Cache-Control',
-    `public, max-age=${FRESH_TTL}, s-maxage=${STALE_TTL}, stale-while-revalidate=${STALE_TTL}`,
+    `public, max-age=0, must-revalidate, s-maxage=${FRESH_TTL}, stale-while-revalidate=${STALE_TTL}`,
   );
   out.headers.set('x-stored-at', String(Date.now()));
   return out;

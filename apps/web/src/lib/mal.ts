@@ -81,6 +81,10 @@ function normTitle(s: string): string {
 
 function titleScore(query: string, entry: any): number {
   const q = normTitle(query);
+  if (!q) return 0;
+  const qTokens = q.split(' ').filter((w) => w.length >= 2);
+  const qSet = new Set(qTokens);
+
   const candidates = [
     entry.title,
     entry.title_english,
@@ -89,25 +93,38 @@ function titleScore(query: string, entry: any): number {
     ...(Array.isArray(entry.title_synonyms) ? entry.title_synonyms : []),
   ]
     .filter(Boolean)
-    .map((t: string) => normTitle(t));
+    .map((t: string) => normTitle(t))
+    .filter(Boolean);
 
   let best = 0;
   for (const c of candidates) {
-    if (!c) continue;
     if (c === q) return 100;
-    if (c.startsWith(q) || q.startsWith(c)) best = Math.max(best, 80);
-    else if (c.includes(q) || q.includes(c)) best = Math.max(best, 60);
-    else {
-      const qw = new Set(q.split(' '));
-      const cw = c.split(' ');
-      const hits = cw.filter((w) => qw.has(w)).length;
-      if (hits > 0) best = Math.max(best, Math.round((hits / Math.max(qw.size, cw.length)) * 50));
+
+    const shortSide = q.length <= c.length ? q : c;
+    const longSide = q.length <= c.length ? c : q;
+
+    // Require the shorter side to be at least 4 chars to count as substring match
+    if (shortSide.length >= 4) {
+      if (longSide.startsWith(shortSide)) best = Math.max(best, 90);
+      else if (longSide.includes(` ${shortSide} `) || longSide.endsWith(` ${shortSide}`) || longSide.startsWith(`${shortSide} `)) {
+        best = Math.max(best, 85);
+      } else if (longSide.includes(shortSide) && shortSide.length >= 8) {
+        best = Math.max(best, 75);
+      }
+    }
+
+    const cTokens = c.split(' ').filter((w) => w.length >= 2);
+    if (cTokens.length > 0 && qTokens.length > 0) {
+      const hits = cTokens.filter((w) => qSet.has(w)).length;
+      const ratio = hits / Math.max(qTokens.length, cTokens.length);
+      if (ratio >= 0.8) best = Math.max(best, 88);
+      else if (ratio >= 0.6) best = Math.max(best, 70);
     }
   }
   return best;
 }
 
-export async function searchMal(query: string): Promise<MalResult | null> {
+export async function searchMal(query: string, opts: { debug?: boolean } = {}): Promise<MalResult | null> {
   const url = `${JIKAN}/manga?q=${encodeURIComponent(query)}&limit=10&order_by=members&sort=desc`;
   const data = await jfetch(url);
   const list: any[] = Array.isArray(data?.data) ? data.data : [];
@@ -124,7 +141,10 @@ export async function searchMal(query: string): Promise<MalResult | null> {
     .sort((a, b) => b.score - a.score);
 
   const best = scored[0];
-  if (!best || best.score < 50) return null;
+  if (opts.debug && best) {
+    console.log(`  score=${best.score} query="${query}" → "${best.entry.title}"`);
+  }
+  if (!best || best.score < 85) return null;
 
   return normalize(best.entry);
 }
@@ -132,11 +152,12 @@ export async function searchMal(query: string): Promise<MalResult | null> {
 export async function findMalForSeries(
   title: string,
   altTitles: string[] = [],
+  opts: { debug?: boolean } = {},
 ): Promise<MalResult | null> {
   const candidates = [title, ...altTitles].map((t) => t.trim()).filter(Boolean);
   for (const c of candidates.slice(0, 3)) {
     try {
-      const hit = await searchMal(c);
+      const hit = await searchMal(c, opts);
       if (hit) return hit;
     } catch {
       // keep trying others

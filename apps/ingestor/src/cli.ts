@@ -6,7 +6,7 @@ import {
   closeQueues,
 } from './queues.js';
 import { closeRedis } from './redis.js';
-import { closeDb, getDb, getPgDb, pgSchema, series, chapters, pages } from '@yomiru/db';
+import { closeDb, closePgDb, getDb, getPgDb, pgSchema, series, chapters, pages } from '@yomiru/db';
 import { eq, sql } from 'drizzle-orm';
 import { config } from './config.js';
 import { resetInvalidDownloadedChapters, setChapterStatus } from './repo.js';
@@ -177,6 +177,7 @@ async function main() {
     await closeQueues();
     await closeRedis();
     closeDb();
+    await closePgDb();
   }
 }
 

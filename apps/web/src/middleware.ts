@@ -45,10 +45,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const req = context.request;
   const url = new URL(req.url);
+  const cookieHeader = req.headers.get('cookie') ?? '';
   const isCacheable =
     req.method === 'GET' &&
     CACHEABLE_PATHS.some((re) => re.test(url.pathname)) &&
-    !req.headers.get('cookie')?.includes('admin=');
+    !cookieHeader.includes('admin=');
 
   if (!isCacheable) {
     const res = await next();
@@ -63,7 +64,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return res;
   }
 
-  const cacheKey = new Request(`${url.toString()}#${getCacheVersion()}`, { method: 'GET' });
+  // Segmentar cache por estado +18 — sin esto usuarios con/sin adult cookie
+  // comparten cache y el filtro no refleja su preferencia.
+  const nsfwEnabled = /(?:^|;\s*)yomiru_nsfw=1(?:;|$)/.test(cookieHeader);
+  const cacheKey = new Request(
+    `${url.toString()}#${getCacheVersion()}#nsfw=${nsfwEnabled ? 1 : 0}`,
+    { method: 'GET' },
+  );
   const execCtx = (
     context.locals as { runtime?: { ctx?: { waitUntil?: (p: Promise<unknown>) => void } } }
   ).runtime?.ctx;

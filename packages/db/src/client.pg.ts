@@ -45,14 +45,25 @@ function resolveUrl(): string {
   return url;
 }
 
-// Cache the connection pool per isolate. In Workers this persists across
-// warm requests served by the same isolate — skips TCP+TLS+auth handshake
-// (~500ms) on subsequent requests. Hyperdrive replaces only the URL via
-// middleware — no code change here.
+// Extrae host+port+db para identificar "misma conexión lógica". Hyperdrive rota
+// user/pass por request, pero el endpoint del proxy es estable dentro del isolate.
+// Comparar URLs completas haría reconnect por request → explosion de pools.
+function connectionKey(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}:${u.port || '5432'}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+// Cache the connection pool per isolate. In Workers persiste entre requests
+// warm del mismo isolate — skip TCP+TLS+auth handshake (~500ms).
 export function getPgDb(): PgDB {
   const url = resolveUrl();
+  const key = connectionKey(url);
 
-  if (_db && _url === url) return _db;
+  if (_db && _url === key) return _db;
 
   const sql = postgres(url, {
     max: isWorkers ? 3 : 10,
@@ -63,7 +74,7 @@ export function getPgDb(): PgDB {
   const db = drizzle(sql, { schema });
   _sql = sql;
   _db = db;
-  _url = url;
+  _url = key;
   return db;
 }
 

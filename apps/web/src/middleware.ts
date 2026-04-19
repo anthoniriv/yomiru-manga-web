@@ -13,7 +13,13 @@ const CACHEABLE_PATHS = [
 ];
 const FRESH_TTL = 300; // 5 min — dentro de esto, HIT instant sin refresh
 const STALE_TTL = 86400; // 24h — se sirve stale y refresca en background
-const CACHE_VERSION = 'v3'; // bump para invalidar cache edge
+
+// Cache key incluye commit SHA → cada deploy invalida automático.
+// CF Pages expone CF_PAGES_COMMIT_SHA en runtime env.
+function getCacheVersion(): string {
+  const env = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
+  return env?.CF_PAGES_COMMIT_SHA?.slice(0, 12) ?? env?.CACHE_VERSION ?? 'v4';
+}
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const reqStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -57,7 +63,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return res;
   }
 
-  const cacheKey = new Request(`${url.toString()}#${CACHE_VERSION}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.toString()}#${getCacheVersion()}`, { method: 'GET' });
   const execCtx = (
     context.locals as { runtime?: { ctx?: { waitUntil?: (p: Promise<unknown>) => void } } }
   ).runtime?.ctx;

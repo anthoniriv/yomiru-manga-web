@@ -16,6 +16,12 @@ const STALE_TTL = 86400; // 24h — se sirve stale y refresca en background
 const CACHE_VERSION = 'v3'; // bump para invalidar cache edge
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  const reqStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const logTotal = (label: string) => {
+    const endNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    console.log(`[PERF] total request time ${label}: ${Math.round(endNow - reqStart)}ms`);
+  };
+
   const runtimeEnv = (
     context.locals as { runtime?: { env?: Record<string, unknown> } }
   ).runtime?.env;
@@ -38,10 +44,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
     CACHEABLE_PATHS.some((re) => re.test(url.pathname)) &&
     !req.headers.get('cookie')?.includes('admin=');
 
-  if (!isCacheable) return next();
+  if (!isCacheable) {
+    const res = await next();
+    logTotal(`${url.pathname} [no-cache]`);
+    return res;
+  }
 
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
-  if (!cache) return next();
+  if (!cache) {
+    const res = await next();
+    logTotal(`${url.pathname} [no-cache-api]`);
+    return res;
+  }
 
   const cacheKey = new Request(`${url.toString()}#${CACHE_VERSION}`, { method: 'GET' });
   const execCtx = (
@@ -73,6 +87,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const res = new Response(hit.body, hit);
     res.headers.set('x-cache', isStale ? 'STALE' : 'HIT');
     res.headers.set('age', String(Math.floor(ageSeconds)));
+    logTotal(`${url.pathname} [${isStale ? 'STALE' : 'HIT'}]`);
     return res;
   }
 
@@ -81,8 +96,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const cached = buildCacheable(response.clone());
     cached.headers.set('x-cache', 'MISS');
     execCtx?.waitUntil?.(cache.put(cacheKey, cached.clone()));
+    logTotal(`${url.pathname} [MISS]`);
     return cached;
   }
+  logTotal(`${url.pathname} [${response.status}]`);
   return response;
 });
 

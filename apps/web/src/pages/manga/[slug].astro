@@ -1,13 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ChapterList from '../../components/ChapterList.tsx';
-import {
-  getSeriesBySlug,
-  getChaptersWithPreviewsBySeries,
-  getCoverUrl,
-  getSeriesGenres,
-  getSeriesBackdropUrl,
-} from '../../lib/db';
+import { getSeriesPageBundle, getCoverUrl } from '../../lib/db';
 import { formatGenre, formatStatus } from '../../lib/labels';
 import { readShowAdult } from '../../lib/nsfw';
 import { isAdmin } from '../../lib/admin';
@@ -15,20 +9,15 @@ import { isAdmin } from '../../lib/admin';
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
 
-const series = await getSeriesBySlug(slug);
-if (!series) return new Response('Not Found', { status: 404 });
+const bundle = await getSeriesPageBundle(slug, true);
+if (!bundle) return new Response('Not Found', { status: 404 });
+const { series, chapters, genres, backgroundUrl } = bundle;
 
 const showAdult = readShowAdult(Astro.cookies);
 const admin = isAdmin(Astro.cookies);
 if (series.isAdult && !showAdult && !admin) {
   return Astro.redirect('/');
 }
-
-const [chapters, genres, backgroundUrl] = await Promise.all([
-  getChaptersWithPreviewsBySeries(series.id, true),
-  getSeriesGenres(series.id),
-  getSeriesBackdropUrl(series.id),
-]);
 const oldestChapter = chapters[0] ?? null;
 const latestChapter = chapters[chapters.length - 1] ?? null;
 const coverUrl = getCoverUrl(series);

@@ -1,32 +1,25 @@
 ---
 import ChapterNav from '../../../components/ChapterNav.tsx';
-import { getSeriesBySlug, getChaptersBySeries, getChapterByNumber, getPagesByChapter, getStorageUrl } from '../../../lib/db';
+import { getChapterPageBundle, getStorageUrl } from '../../../lib/db';
 import { readShowAdult } from '../../../lib/nsfw';
 
 const { slug, chapter: chapterParam } = Astro.params;
 if (!slug || !chapterParam) return Astro.redirect('/');
 
-const series = await getSeriesBySlug(slug);
-if (!series) return new Response('Not Found', { status: 404 });
-
-const showAdult = readShowAdult(Astro.cookies);
-if (series.isAdult && !showAdult) return Astro.redirect('/');
-
 const chapterNum = parseFloat(chapterParam);
 if (isNaN(chapterNum)) return new Response('Not Found', { status: 404 });
 
-const [chapter, allChapters] = await Promise.all([
-  getChapterByNumber(series.id, chapterNum),
-  getChaptersBySeries(series.id),
-]);
-if (!chapter) return new Response('Not Found', { status: 404 });
+const bundle = await getChapterPageBundle(slug, chapterNum);
+if (!bundle) return new Response('Not Found', { status: 404 });
+const { series, chapter, allCompletedChapters: completedChapters, pages } = bundle;
+
+const showAdult = readShowAdult(Astro.cookies);
+if (series.isAdult && !showAdult) return Astro.redirect('/');
 
 if (chapter.downloadStatus !== 'completed') {
   return Astro.redirect(`/manga/${slug}`);
 }
 
-const pages = await getPagesByChapter(chapter.id);
-const completedChapters = allChapters.filter(c => c.downloadStatus === 'completed');
 const currentIdx = completedChapters.findIndex(c => c.number === chapterNum);
 const prevChapter = currentIdx > 0 ? completedChapters[currentIdx - 1] : null;
 const nextChapter = currentIdx < completedChapters.length - 1 ? completedChapters[currentIdx + 1] : null;

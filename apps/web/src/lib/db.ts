@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { getPgDb, pgSchema } from '@yomiru/db';
+import { timed } from './perf';
 
 const { series, chapters, pages, seriesGenres } = pgSchema;
 
@@ -29,7 +30,6 @@ export interface ListOpts {
   showAdult?: boolean;
 }
 
-// Series that have at least one chapter already uploaded to R2 (downloadStatus='completed').
 function availableSeriesIdsSubquery() {
   return sql`(SELECT DISTINCT ${chapters.seriesId} FROM ${chapters} WHERE ${chapters.downloadStatus} = 'completed')`;
 }
@@ -40,41 +40,45 @@ function availableAndAdultWhere(showAdult: boolean) {
 }
 
 export async function getStats(opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  const where = availableAndAdultWhere(showAdult);
+  return timed('getStats', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const where = availableAndAdultWhere(showAdult);
 
-  const [totalSeriesRow, totalChaptersRow] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(series).where(where),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(chapters)
-      .innerJoin(series, eq(series.id, chapters.seriesId))
-      .where(and(eq(chapters.downloadStatus, 'completed'), showAdult ? undefined : eq(series.isAdult, false))),
-  ]);
-  return {
-    totalSeries: Number(totalSeriesRow[0]?.count ?? 0),
-    totalChapters: Number(totalChaptersRow[0]?.count ?? 0),
-  };
+    const [totalSeriesRow, totalChaptersRow] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(series).where(where),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(chapters)
+        .innerJoin(series, eq(series.id, chapters.seriesId))
+        .where(and(eq(chapters.downloadStatus, 'completed'), showAdult ? undefined : eq(series.isAdult, false))),
+    ]);
+    return {
+      totalSeries: Number(totalSeriesRow[0]?.count ?? 0),
+      totalChapters: Number(totalChaptersRow[0]?.count ?? 0),
+    };
+  });
 }
 
 export async function getSeriesList(page: number, perPage: number, opts: ListOpts = {}) {
-  const db = getPgDb();
-  const offset = (page - 1) * perPage;
-  const showAdult = opts.showAdult ?? false;
-  const where = availableAndAdultWhere(showAdult);
+  return timed('getSeriesList', async () => {
+    const db = getPgDb();
+    const offset = (page - 1) * perPage;
+    const showAdult = opts.showAdult ?? false;
+    const where = availableAndAdultWhere(showAdult);
 
-  const [rows, totalRow] = await Promise.all([
-    db
-      .select()
-      .from(series)
-      .where(where)
-      .orderBy(desc(series.popularity))
-      .limit(perPage)
-      .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(series).where(where),
-  ]);
-  return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select()
+        .from(series)
+        .where(where)
+        .orderBy(desc(series.popularity))
+        .limit(perPage)
+        .offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(series).where(where),
+    ]);
+    return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+  });
 }
 
 export type CatalogSort = 'added' | 'updated' | 'popular' | 'rating' | 'title';
@@ -107,309 +111,321 @@ function catalogWhere(opts: CatalogOpts = {}) {
 }
 
 export async function getCatalogSeries(page: number, perPage: number, opts: CatalogOpts = {}) {
-  const db = getPgDb();
-  const offset = (page - 1) * perPage;
-  const where = catalogWhere(opts);
-  const sort = opts.sort ?? 'added';
-  const orderBy =
-    sort === 'title' ? [asc(series.title)] :
-    sort === 'popular' ? [desc(series.popularity), desc(series.rating)] :
-    sort === 'rating' ? [desc(series.rating), desc(series.popularity)] :
-    sort === 'updated' ? [desc(series.updatedAt)] :
-    [desc(series.createdAt)];
+  return timed('getCatalogSeries', async () => {
+    const db = getPgDb();
+    const offset = (page - 1) * perPage;
+    const where = catalogWhere(opts);
+    const sort = opts.sort ?? 'added';
+    const orderBy =
+      sort === 'title' ? [asc(series.title)] :
+      sort === 'popular' ? [desc(series.popularity), desc(series.rating)] :
+      sort === 'rating' ? [desc(series.rating), desc(series.popularity)] :
+      sort === 'updated' ? [desc(series.updatedAt)] :
+      [desc(series.createdAt)];
 
-  const [rows, totalRow] = await Promise.all([
-    db
-      .select()
-      .from(series)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(perPage)
-      .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(series).where(where),
-  ]);
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select()
+        .from(series)
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(perPage)
+        .offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(series).where(where),
+    ]);
 
-  return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+    return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+  });
 }
 
 export async function getCatalogFilters(opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  const adultFilter = showAdult ? undefined : eq(series.isAdult, false);
-  const available = sql`${series.id} IN ${availableSeriesIdsSubquery()}`;
+  return timed('getCatalogFilters', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const adultFilter = showAdult ? undefined : eq(series.isAdult, false);
+    const available = sql`${series.id} IN ${availableSeriesIdsSubquery()}`;
 
-  const [genreRows, yearRows] = await Promise.all([
-    db
-      .select({ genre: seriesGenres.genre })
-      .from(seriesGenres)
-      .innerJoin(series, eq(series.id, seriesGenres.seriesId))
-      .where(and(available, adultFilter))
-      .groupBy(seriesGenres.genre)
-      .orderBy(asc(seriesGenres.genre)),
-    db
-      .select({ year: series.year })
-      .from(series)
-      .where(and(available, adultFilter, sql`${series.year} IS NOT NULL`))
-      .groupBy(series.year)
-      .orderBy(desc(series.year)),
-  ]);
+    const [genreRows, yearRows] = await Promise.all([
+      db
+        .select({ genre: seriesGenres.genre })
+        .from(seriesGenres)
+        .innerJoin(series, eq(series.id, seriesGenres.seriesId))
+        .where(and(available, adultFilter))
+        .groupBy(seriesGenres.genre)
+        .orderBy(asc(seriesGenres.genre)),
+      db
+        .select({ year: series.year })
+        .from(series)
+        .where(and(available, adultFilter, sql`${series.year} IS NOT NULL`))
+        .groupBy(series.year)
+        .orderBy(desc(series.year)),
+    ]);
 
-  return {
-    genres: genreRows.map((r) => r.genre).filter(Boolean),
-    years: yearRows.map((r) => r.year).filter((year): year is number => year != null),
-  };
+    return {
+      genres: genreRows.map((r) => r.genre).filter(Boolean),
+      years: yearRows.map((r) => r.year).filter((year): year is number => year != null),
+    };
+  });
 }
 
 export async function getTopSeries(limit: number, opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  return db
-    .select()
-    .from(series)
-    .where(availableAndAdultWhere(showAdult))
-    .orderBy(desc(series.popularity), desc(series.rating))
-    .limit(limit);
+  return timed('getTopSeries', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    return db
+      .select()
+      .from(series)
+      .where(availableAndAdultWhere(showAdult))
+      .orderBy(desc(series.popularity), desc(series.rating))
+      .limit(limit);
+  });
 }
 
-// Newest series measured by latest chapter upload time (downloadedAt).
-// Returns distinct series ordered by most recent R2 upload.
-export async function getLatestSeries(limit: number, opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
+// Colapsado a 1 query: JOIN series + MAX(downloaded_at) agrupado.
+// Antes eran 2 queries (IDs, luego datos).
+export async function getLatestSeries(limit: number, opts: ListOpts = {}): Promise<Series[]> {
+  return timed('getLatestSeries', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
+    const lim = Math.max(1, Math.floor(limit));
 
-  const rows = await db.execute<{ id: string }>(sql`
-    SELECT ${series.id} AS id
-    FROM ${series}
-    JOIN (
-      SELECT series_id, MAX(downloaded_at) AS last_upload
-      FROM ${chapters}
-      WHERE download_status = 'completed'
-      GROUP BY series_id
-    ) ch ON ch.series_id = ${series.id}
-    WHERE ${adultFilter}
-    ORDER BY ch.last_upload DESC NULLS LAST
-    LIMIT ${sql.raw(String(Math.max(1, Math.floor(limit))))}
-  `);
-
-  const ids = (rows as unknown as { rows?: Array<{ id: string }> }).rows
-    ?? (rows as unknown as Array<{ id: string }>);
-  const idList = Array.isArray(ids) ? ids.map((r) => r.id) : [];
-  if (idList.length === 0) return [] as Series[];
-
-  const fetched = await db.select().from(series).where(inArray(series.id, idList));
-  const byId = new Map(fetched.map((s) => [s.id, s]));
-  return idList.map((id) => byId.get(id)!).filter(Boolean);
+    const result = await db.execute<Series & { last_upload: string | null }>(sql`
+      SELECT ${series}.*, MAX(${chapters.downloadedAt}) AS last_upload
+      FROM ${series}
+      JOIN ${chapters} ON ${chapters.seriesId} = ${series.id}
+      WHERE ${chapters.downloadStatus} = 'completed' AND ${adultFilter}
+      GROUP BY ${series.id}
+      ORDER BY last_upload DESC NULLS LAST
+      LIMIT ${sql.raw(String(lim))}
+    `);
+    const rows = (result as unknown as { rows?: Series[] }).rows ?? (result as unknown as Series[]);
+    return Array.isArray(rows) ? rows : [];
+  });
 }
 
 export async function getSeriesBySlug(slug: string): Promise<Series | undefined> {
-  const rows = await getPgDb()
-    .select()
-    .from(series)
-    .where(eq(series.slug, slug))
-    .limit(1);
-  return rows[0];
+  return timed(`getSeriesBySlug(${slug})`, async () => {
+    const rows = await getPgDb()
+      .select()
+      .from(series)
+      .where(eq(series.slug, slug))
+      .limit(1);
+    return rows[0];
+  });
 }
 
 export async function getChaptersBySeries(seriesId: string, onlyCompleted = false): Promise<Chapter[]> {
-  const db = getPgDb();
-  const where = onlyCompleted
-    ? and(eq(chapters.seriesId, seriesId), eq(chapters.downloadStatus, 'completed'))!
-    : eq(chapters.seriesId, seriesId);
-  return db.select().from(chapters).where(where).orderBy(chapters.number);
+  return timed('getChaptersBySeries', async () => {
+    const db = getPgDb();
+    const where = onlyCompleted
+      ? and(eq(chapters.seriesId, seriesId), eq(chapters.downloadStatus, 'completed'))!
+      : eq(chapters.seriesId, seriesId);
+    return db.select().from(chapters).where(where).orderBy(chapters.number);
+  });
 }
 
 export async function getChaptersWithPreviewsBySeries(
   seriesId: string,
   onlyCompleted = false,
 ): Promise<ChapterWithPreview[]> {
-  const db = getPgDb();
-  const where = onlyCompleted
-    ? and(eq(chapters.seriesId, seriesId), eq(chapters.downloadStatus, 'completed'))!
-    : eq(chapters.seriesId, seriesId);
+  return timed('getChaptersWithPreviewsBySeries', async () => {
+    const db = getPgDb();
+    const where = onlyCompleted
+      ? and(eq(chapters.seriesId, seriesId), eq(chapters.downloadStatus, 'completed'))!
+      : eq(chapters.seriesId, seriesId);
 
-  const rows = await db
-    .select({
-      id: chapters.id,
-      seriesId: chapters.seriesId,
-      number: chapters.number,
-      title: chapters.title,
-      volume: chapters.volume,
-      language: chapters.language,
-      pageCount: chapters.pageCount,
-      sourceUrl: chapters.sourceUrl,
-      sourceChapterId: chapters.sourceChapterId,
-      publishedAt: chapters.publishedAt,
-      downloadStatus: chapters.downloadStatus,
-      downloadError: chapters.downloadError,
-      downloadedAt: chapters.downloadedAt,
-      createdAt: chapters.createdAt,
-      previewPath: pages.storagePath,
-      previewSourceUrl: pages.sourceUrl,
-    })
-    .from(chapters)
-    .leftJoin(pages, and(eq(pages.chapterId, chapters.id), eq(pages.idx, 0)))
-    .where(where)
-    .orderBy(asc(chapters.number));
+    const rows = await db
+      .select({
+        id: chapters.id,
+        seriesId: chapters.seriesId,
+        number: chapters.number,
+        title: chapters.title,
+        volume: chapters.volume,
+        language: chapters.language,
+        pageCount: chapters.pageCount,
+        sourceUrl: chapters.sourceUrl,
+        sourceChapterId: chapters.sourceChapterId,
+        publishedAt: chapters.publishedAt,
+        downloadStatus: chapters.downloadStatus,
+        downloadError: chapters.downloadError,
+        downloadedAt: chapters.downloadedAt,
+        createdAt: chapters.createdAt,
+        previewPath: pages.storagePath,
+        previewSourceUrl: pages.sourceUrl,
+      })
+      .from(chapters)
+      .leftJoin(pages, and(eq(pages.chapterId, chapters.id), eq(pages.idx, 0)))
+      .where(where)
+      .orderBy(asc(chapters.number));
 
-  return rows.map(({ previewPath, previewSourceUrl: _previewSourceUrl, ...chapter }) => ({
-    ...chapter,
-    previewUrl: previewPath ? getStorageUrl(previewPath) : null,
-  }));
+    return rows.map(({ previewPath, previewSourceUrl: _previewSourceUrl, ...chapter }) => ({
+      ...chapter,
+      previewUrl: previewPath ? getStorageUrl(previewPath) : null,
+    }));
+  });
 }
 
 export async function getSeriesBackdropUrl(seriesId: string): Promise<string | null> {
-  const rows = await getPgDb()
-    .select({
-      storagePath: pages.storagePath,
-      sourceUrl: pages.sourceUrl,
-    })
-    .from(chapters)
-    .innerJoin(pages, eq(pages.chapterId, chapters.id))
-    .where(
-      and(
-        eq(chapters.seriesId, seriesId),
-        eq(chapters.downloadStatus, 'completed'),
-        sql`${pages.storagePath} IS NOT NULL`,
-        sql`${pages.idx} > 0`,
-      ),
-    )
-    .orderBy(desc(chapters.number), asc(pages.idx))
-    .limit(1);
+  return timed('getSeriesBackdropUrl', async () => {
+    const rows = await getPgDb()
+      .select({
+        storagePath: pages.storagePath,
+        sourceUrl: pages.sourceUrl,
+      })
+      .from(chapters)
+      .innerJoin(pages, eq(pages.chapterId, chapters.id))
+      .where(
+        and(
+          eq(chapters.seriesId, seriesId),
+          eq(chapters.downloadStatus, 'completed'),
+          sql`${pages.storagePath} IS NOT NULL`,
+          sql`${pages.idx} > 0`,
+        ),
+      )
+      .orderBy(desc(chapters.number), asc(pages.idx))
+      .limit(1);
 
-  const row = rows[0];
-  if (!row) return null;
-  if (row.storagePath) return getStorageUrl(row.storagePath);
-  return row.sourceUrl ?? null;
+    const row = rows[0];
+    if (!row) return null;
+    if (row.storagePath) return getStorageUrl(row.storagePath);
+    return row.sourceUrl ?? null;
+  });
 }
 
 export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<string, string>> {
-  const uniqueIds = [...new Set(seriesIds.filter(Boolean))];
-  if (uniqueIds.length === 0) return new Map();
+  return timed('getSeriesBackdropMap', async () => {
+    const uniqueIds = [...new Set(seriesIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return new Map();
 
-  const idList = sql.join(
-    uniqueIds.map((id) => sql`${id}`),
-    sql`, `,
-  );
-  const result = await getPgDb().execute<{
-    series_id: string;
-    storage_path: string | null;
-    source_url: string | null;
-  }>(sql`
-    SELECT DISTINCT ON (${chapters.seriesId})
-      ${chapters.seriesId} AS series_id,
-      ${pages.storagePath} AS storage_path,
-      ${pages.sourceUrl} AS source_url
-    FROM ${chapters}
-    INNER JOIN ${pages} ON ${pages.chapterId} = ${chapters.id}
-    WHERE ${chapters.seriesId} IN (${idList})
-      AND ${chapters.downloadStatus} = 'completed'
-      AND ${pages.storagePath} IS NOT NULL
-      AND ${pages.idx} > 0
-    ORDER BY ${chapters.seriesId}, ${chapters.number} DESC, ${pages.idx} ASC
-  `);
+    const idList = sql.join(uniqueIds.map((id) => sql`${id}`), sql`, `);
+    const result = await getPgDb().execute<{
+      series_id: string;
+      storage_path: string | null;
+      source_url: string | null;
+    }>(sql`
+      SELECT DISTINCT ON (${chapters.seriesId})
+        ${chapters.seriesId} AS series_id,
+        ${pages.storagePath} AS storage_path,
+        ${pages.sourceUrl} AS source_url
+      FROM ${chapters}
+      INNER JOIN ${pages} ON ${pages.chapterId} = ${chapters.id}
+      WHERE ${chapters.seriesId} IN (${idList})
+        AND ${chapters.downloadStatus} = 'completed'
+        AND ${pages.storagePath} IS NOT NULL
+        AND ${pages.idx} > 0
+      ORDER BY ${chapters.seriesId}, ${chapters.number} DESC, ${pages.idx} ASC
+    `);
 
-  const rows = (result as unknown as { rows?: typeof result }).rows ?? (result as unknown as typeof result);
-  const map = new Map<string, string>();
-  for (const r of Array.isArray(rows) ? rows : []) {
-    const url = r.storage_path ? getStorageUrl(r.storage_path) : r.source_url;
-    if (url) map.set(r.series_id, url);
-  }
-  return map;
+    const rows = (result as unknown as { rows?: typeof result }).rows ?? (result as unknown as typeof result);
+    const map = new Map<string, string>();
+    for (const r of Array.isArray(rows) ? rows : []) {
+      const url = r.storage_path ? getStorageUrl(r.storage_path) : r.source_url;
+      if (url) map.set(r.series_id, url);
+    }
+    return map;
+  });
 }
 
 export async function getChapterByNumber(
   seriesId: string,
   number: number,
 ): Promise<Chapter | undefined> {
-  const rows = await getPgDb()
-    .select()
-    .from(chapters)
-    .where(and(eq(chapters.seriesId, seriesId), eq(chapters.number, number))!)
-    .limit(1);
-  return rows[0];
+  return timed('getChapterByNumber', async () => {
+    const rows = await getPgDb()
+      .select()
+      .from(chapters)
+      .where(and(eq(chapters.seriesId, seriesId), eq(chapters.number, number))!)
+      .limit(1);
+    return rows[0];
+  });
 }
 
 export async function getPagesByChapter(chapterId: string): Promise<Page[]> {
-  return getPgDb()
-    .select()
-    .from(pages)
-    .where(eq(pages.chapterId, chapterId))
-    .orderBy(pages.idx);
+  return timed('getPagesByChapter', async () => {
+    return getPgDb()
+      .select()
+      .from(pages)
+      .where(eq(pages.chapterId, chapterId))
+      .orderBy(pages.idx);
+  });
 }
 
 export async function getSeriesGenres(seriesId: string): Promise<string[]> {
-  const rows = await getPgDb()
-    .select({ genre: seriesGenres.genre })
-    .from(seriesGenres)
-    .where(eq(seriesGenres.seriesId, seriesId));
-  return rows.map((r) => r.genre);
+  return timed('getSeriesGenres', async () => {
+    const rows = await getPgDb()
+      .select({ genre: seriesGenres.genre })
+      .from(seriesGenres)
+      .where(eq(seriesGenres.seriesId, seriesId));
+    return rows.map((r) => r.genre);
+  });
 }
 
 export async function getFeaturedSeries(limit: number, opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  return db
-    .select()
-    .from(series)
-    .where(
-      and(
-        sql`${series.id} IN ${availableSeriesIdsSubquery()}`,
-        sql`${series.description} IS NOT NULL AND length(${series.description}) > 40`,
-        sql`${series.coverPath} IS NOT NULL OR ${series.coverSourceUrl} IS NOT NULL`,
-        showAdult ? undefined : eq(series.isAdult, false),
-      ),
-    )
-    .orderBy(desc(series.popularity), desc(series.rating))
-    .limit(limit);
+  return timed('getFeaturedSeries', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    return db
+      .select()
+      .from(series)
+      .where(
+        and(
+          sql`${series.id} IN ${availableSeriesIdsSubquery()}`,
+          sql`${series.description} IS NOT NULL AND length(${series.description}) > 40`,
+          sql`${series.coverPath} IS NOT NULL OR ${series.coverSourceUrl} IS NOT NULL`,
+          showAdult ? undefined : eq(series.isAdult, false),
+        ),
+      )
+      .orderBy(desc(series.popularity), desc(series.rating))
+      .limit(limit);
+  });
 }
 
-export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
+// Colapsado a 1 query (antes: 2). JOIN + GROUP BY + ORDER en vez de IDs→fetch.
+export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {}): Promise<Series[]> {
+  return timed('getRecentlyUpdatedSeries', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
+    const lim = Math.max(1, Math.floor(limit));
 
-  const result = await db.execute<{ id: string; last_upload: string }>(sql`
-    SELECT ${series.id} AS id, MAX(${chapters.downloadedAt}) AS last_upload
-    FROM ${series}
-    JOIN ${chapters} ON ${chapters.seriesId} = ${series.id}
-    WHERE ${chapters.downloadStatus} = 'completed' AND ${adultFilter}
-    GROUP BY ${series.id}
-    ORDER BY last_upload DESC NULLS LAST
-    LIMIT ${sql.raw(String(Math.max(1, Math.floor(limit))))}
-  `);
-
-  const rows = (result as unknown as { rows?: Array<{ id: string }> }).rows
-    ?? (result as unknown as Array<{ id: string }>);
-  const idList = Array.isArray(rows) ? rows.map((r) => r.id) : [];
-  if (idList.length === 0) return [] as Series[];
-
-  const fetched = await db.select().from(series).where(inArray(series.id, idList));
-  const byId = new Map(fetched.map((s) => [s.id, s]));
-  return idList.map((id) => byId.get(id)!).filter(Boolean);
+    const result = await db.execute<Series & { last_upload: string | null }>(sql`
+      SELECT ${series}.*, MAX(${chapters.downloadedAt}) AS last_upload
+      FROM ${series}
+      JOIN ${chapters} ON ${chapters.seriesId} = ${series.id}
+      WHERE ${chapters.downloadStatus} = 'completed' AND ${adultFilter}
+      GROUP BY ${series.id}
+      ORDER BY last_upload DESC NULLS LAST
+      LIMIT ${sql.raw(String(lim))}
+    `);
+    const rows = (result as unknown as { rows?: Series[] }).rows ?? (result as unknown as Series[]);
+    return Array.isArray(rows) ? rows : [];
+  });
 }
 
 export async function getSourcesSummary(opts: ListOpts = {}) {
-  const db = getPgDb();
-  const showAdult = opts.showAdult ?? false;
-  const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
+  return timed('getSourcesSummary', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
 
-  const result = await db.execute<{ source: string; count: string }>(sql`
-    SELECT ${series.sourceName} AS source, count(*)::text AS count
-    FROM ${series}
-    WHERE ${adultFilter} AND ${series.sourceName} IS NOT NULL
-      AND ${series.id} IN (SELECT DISTINCT ${chapters.seriesId} FROM ${chapters} WHERE ${chapters.downloadStatus} = 'completed')
-    GROUP BY ${series.sourceName}
-    ORDER BY count(*) DESC
-    LIMIT 20
-  `);
+    const result = await db.execute<{ source: string; count: string }>(sql`
+      SELECT ${series.sourceName} AS source, count(*)::text AS count
+      FROM ${series}
+      WHERE ${adultFilter} AND ${series.sourceName} IS NOT NULL
+        AND ${series.id} IN (SELECT DISTINCT ${chapters.seriesId} FROM ${chapters} WHERE ${chapters.downloadStatus} = 'completed')
+      GROUP BY ${series.sourceName}
+      ORDER BY count(*) DESC
+      LIMIT 20
+    `);
 
-  const rows = (result as unknown as { rows?: Array<{ source: string; count: string }> }).rows
-    ?? (result as unknown as Array<{ source: string; count: string }>);
-  return (Array.isArray(rows) ? rows : []).map((r) => ({
-    source: r.source,
-    count: Number(r.count),
-  }));
+    const rows = (result as unknown as { rows?: Array<{ source: string; count: string }> }).rows
+      ?? (result as unknown as Array<{ source: string; count: string }>);
+    return (Array.isArray(rows) ? rows : []).map((r) => ({
+      source: r.source,
+      count: Number(r.count),
+    }));
+  });
 }
 
 export type AdminAdultFilter = 'all' | 'adult' | 'non-adult';
@@ -419,53 +435,229 @@ export async function getSeriesForAdmin(
   perPage: number,
   opts: { filter?: AdminAdultFilter; search?: string } = {},
 ) {
-  const db = getPgDb();
-  const offset = (page - 1) * perPage;
-  const filter = opts.filter ?? 'all';
-  const search = opts.search?.trim() ?? '';
+  return timed('getSeriesForAdmin', async () => {
+    const db = getPgDb();
+    const offset = (page - 1) * perPage;
+    const filter = opts.filter ?? 'all';
+    const search = opts.search?.trim() ?? '';
 
-  const conds = [] as ReturnType<typeof eq>[];
-  if (filter === 'adult') conds.push(eq(series.isAdult, true));
-  if (filter === 'non-adult') conds.push(eq(series.isAdult, false));
-  if (search) conds.push(ilike(series.title, `%${search}%`));
-  const where = conds.length > 0 ? and(...conds) : undefined;
+    const conds = [] as ReturnType<typeof eq>[];
+    if (filter === 'adult') conds.push(eq(series.isAdult, true));
+    if (filter === 'non-adult') conds.push(eq(series.isAdult, false));
+    if (search) conds.push(ilike(series.title, `%${search}%`));
+    const where = conds.length > 0 ? and(...conds) : undefined;
 
-  const [rows, totalRow] = await Promise.all([
-    db
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select({
+          id: series.id,
+          slug: series.slug,
+          title: series.title,
+          coverPath: series.coverPath,
+          coverSourceUrl: series.coverSourceUrl,
+          isAdult: series.isAdult,
+        })
+        .from(series)
+        .where(where)
+        .orderBy(series.title)
+        .limit(perPage)
+        .offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(series).where(where),
+    ]);
+
+    return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+  });
+}
+
+export async function searchSeries(query: string, limit = 20, opts: ListOpts = {}) {
+  return timed('searchSeries', async () => {
+    const showAdult = opts.showAdult ?? false;
+    const whereExpr = and(
+      ilike(series.title, `%${query}%`),
+      sql`${series.id} IN ${availableSeriesIdsSubquery()}`,
+      showAdult ? undefined : eq(series.isAdult, false),
+    );
+    return getPgDb()
       .select({
-        id: series.id,
         slug: series.slug,
         title: series.title,
         coverPath: series.coverPath,
         coverSourceUrl: series.coverSourceUrl,
-        isAdult: series.isAdult,
       })
       .from(series)
-      .where(where)
-      .orderBy(series.title)
-      .limit(perPage)
-      .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(series).where(where),
-  ]);
-
-  return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
+      .where(whereExpr)
+      .limit(limit);
+  });
 }
 
-export async function searchSeries(query: string, limit = 20, opts: ListOpts = {}) {
-  const showAdult = opts.showAdult ?? false;
-  const whereExpr = and(
-    ilike(series.title, `%${query}%`),
-    sql`${series.id} IN ${availableSeriesIdsSubquery()}`,
-    showAdult ? undefined : eq(series.isAdult, false),
+// ============================================================================
+// Slug-based bundled fetchers — evitan el waterfall series→resto en /manga/*.
+// Internamente hacen JOIN por slug en vez de requerir series.id previo.
+// ============================================================================
+
+export interface SeriesPageBundle {
+  series: Series;
+  chapters: ChapterWithPreview[];
+  genres: string[];
+  backgroundUrl: string | null;
+}
+
+// Devuelve todo lo de /manga/[slug] en PARALELO (1 round-trip lógico).
+// series se resuelve en paralelo con helpers que hacen JOIN por slug.
+export async function getSeriesPageBundle(
+  slug: string,
+  onlyCompleted = true,
+): Promise<SeriesPageBundle | null> {
+  const db = getPgDb();
+
+  const [seriesRow, chapterRows, genreRows, backdropRow] = await timed(
+    `getSeriesPageBundle(${slug})`,
+    async () =>
+      Promise.all([
+        db.select().from(series).where(eq(series.slug, slug)).limit(1),
+        db
+          .select({
+            id: chapters.id,
+            seriesId: chapters.seriesId,
+            number: chapters.number,
+            title: chapters.title,
+            volume: chapters.volume,
+            language: chapters.language,
+            pageCount: chapters.pageCount,
+            sourceUrl: chapters.sourceUrl,
+            sourceChapterId: chapters.sourceChapterId,
+            publishedAt: chapters.publishedAt,
+            downloadStatus: chapters.downloadStatus,
+            downloadError: chapters.downloadError,
+            downloadedAt: chapters.downloadedAt,
+            createdAt: chapters.createdAt,
+            previewPath: pages.storagePath,
+          })
+          .from(chapters)
+          .innerJoin(series, eq(series.id, chapters.seriesId))
+          .leftJoin(pages, and(eq(pages.chapterId, chapters.id), eq(pages.idx, 0)))
+          .where(
+            onlyCompleted
+              ? and(eq(series.slug, slug), eq(chapters.downloadStatus, 'completed'))!
+              : eq(series.slug, slug),
+          )
+          .orderBy(asc(chapters.number)),
+        db
+          .select({ genre: seriesGenres.genre })
+          .from(seriesGenres)
+          .innerJoin(series, eq(series.id, seriesGenres.seriesId))
+          .where(eq(series.slug, slug)),
+        db
+          .select({
+            storagePath: pages.storagePath,
+            sourceUrl: pages.sourceUrl,
+          })
+          .from(chapters)
+          .innerJoin(series, eq(series.id, chapters.seriesId))
+          .innerJoin(pages, eq(pages.chapterId, chapters.id))
+          .where(
+            and(
+              eq(series.slug, slug),
+              eq(chapters.downloadStatus, 'completed'),
+              sql`${pages.storagePath} IS NOT NULL`,
+              sql`${pages.idx} > 0`,
+            ),
+          )
+          .orderBy(desc(chapters.number), asc(pages.idx))
+          .limit(1),
+      ]),
   );
-  return getPgDb()
-    .select({
-      slug: series.slug,
-      title: series.title,
-      coverPath: series.coverPath,
-      coverSourceUrl: series.coverSourceUrl,
-    })
-    .from(series)
-    .where(whereExpr)
-    .limit(limit);
+
+  const s = seriesRow[0];
+  if (!s) return null;
+
+  const chaptersOut: ChapterWithPreview[] = chapterRows.map(({ previewPath, ...ch }) => ({
+    ...ch,
+    previewUrl: previewPath ? getStorageUrl(previewPath) : null,
+  }));
+  const backdrop = backdropRow[0];
+  const backgroundUrl = backdrop?.storagePath
+    ? getStorageUrl(backdrop.storagePath)
+    : backdrop?.sourceUrl ?? null;
+
+  return {
+    series: s,
+    chapters: chaptersOut,
+    genres: genreRows.map((r) => r.genre).filter(Boolean),
+    backgroundUrl,
+  };
+}
+
+export interface ChapterPageBundle {
+  series: Series;
+  chapter: Chapter;
+  allCompletedChapters: Pick<Chapter, 'id' | 'number' | 'downloadStatus'>[];
+  pages: Page[];
+}
+
+// Bundle para /manga/[slug]/[chapter] — reduce de 4 round-trips serial a 1.
+// Todas las queries pueden correr en paralelo usando slug+number como ancla.
+export async function getChapterPageBundle(
+  slug: string,
+  chapterNumber: number,
+): Promise<ChapterPageBundle | null> {
+  const db = getPgDb();
+
+  const [seriesRow, chapterRow, allChaptersRow] = await timed(
+    `getChapterPageBundle(${slug},${chapterNumber})`,
+    async () =>
+      Promise.all([
+        db.select().from(series).where(eq(series.slug, slug)).limit(1),
+        db
+          .select({
+            id: chapters.id,
+            seriesId: chapters.seriesId,
+            number: chapters.number,
+            title: chapters.title,
+            volume: chapters.volume,
+            language: chapters.language,
+            pageCount: chapters.pageCount,
+            sourceUrl: chapters.sourceUrl,
+            sourceChapterId: chapters.sourceChapterId,
+            publishedAt: chapters.publishedAt,
+            downloadStatus: chapters.downloadStatus,
+            downloadError: chapters.downloadError,
+            downloadedAt: chapters.downloadedAt,
+            createdAt: chapters.createdAt,
+          })
+          .from(chapters)
+          .innerJoin(series, eq(series.id, chapters.seriesId))
+          .where(and(eq(series.slug, slug), eq(chapters.number, chapterNumber))!)
+          .limit(1),
+        db
+          .select({
+            id: chapters.id,
+            number: chapters.number,
+            downloadStatus: chapters.downloadStatus,
+          })
+          .from(chapters)
+          .innerJoin(series, eq(series.id, chapters.seriesId))
+          .where(and(eq(series.slug, slug), eq(chapters.downloadStatus, 'completed'))!)
+          .orderBy(asc(chapters.number)),
+      ]),
+  );
+
+  const s = seriesRow[0];
+  const ch = chapterRow[0];
+  if (!s || !ch) return null;
+
+  // pages necesita chapter.id — 1 extra round-trip inevitable sin reestructurar.
+  // Lo ejecutamos solo si chapter existe y está completo (evita query desperdiciada).
+  const chapterPages = ch.downloadStatus === 'completed'
+    ? await timed('getPagesByChapter.bundle', async () =>
+        db.select().from(pages).where(eq(pages.chapterId, ch.id)).orderBy(pages.idx),
+      )
+    : [];
+
+  return {
+    series: s,
+    chapter: ch,
+    allCompletedChapters: allChaptersRow,
+    pages: chapterPages,
+  };
 }

@@ -30,23 +30,38 @@ const isWorkers =
   typeof (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent === 'string' &&
   (globalThis as { navigator: { userAgent: string } }).navigator.userAgent.includes('Cloudflare');
 
-export function getPgDb(): PgDB {
-  if (_db && !isWorkers) return _db;
-  loadEnvFile();
+function resolveUrl(): string {
   const globalEnv = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
   const url = process.env.DATABASE_URL ?? globalEnv?.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL env var missing');
+  return url;
+}
+
+// Cache the connection pool per isolate. In Workers this persists across
+// warm requests served by the same isolate — skips TCP+TLS+auth handshake
+// (~500ms) on subsequent requests. Hyperdrive drop-in later replaces only
+// the URL returned by resolveUrl().
+let _url: string | null = null;
+
+export function getPgDb(): PgDB {
+  const url = (() => {
+    if (!isWorkers && !_envLoaded) loadEnvFile();
+    return resolveUrl();
+  })();
+
+  if (_db && _url === url) return _db;
+
   const sql = postgres(url, {
-    max: isWorkers ? 5 : 10,
+    max: isWorkers ? 3 : 10,
     prepare: false, // required for Supabase transaction pooler (port 6543)
     fetch_types: false,
     idle_timeout: isWorkers ? 20 : undefined,
+    connect_timeout: 10,
   });
   const db = drizzle(sql, { schema });
-  if (!isWorkers) {
-    _sql = sql;
-    _db = db;
-  }
+  _sql = sql;
+  _db = db;
+  _url = url;
   return db;
 }
 

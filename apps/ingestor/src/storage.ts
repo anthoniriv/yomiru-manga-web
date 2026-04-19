@@ -76,18 +76,26 @@ async function fetchWithRetry(
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
+function rewriteBannedCdn(url: string): string {
+  // cdn.statically.io banned us — strip proxy prefix, fetch origin directly
+  const m = url.match(/^https?:\/\/cdn\.statically\.io\/img\/(.+)$/i);
+  if (m) return `https://${m[1].replace(/^\/+/, '')}`;
+  return url;
+}
+
 export async function downloadAndUpload(
   url: string,
   key: string,
   headers: Record<string, string> = {},
 ): Promise<DownloadedAsset> {
-  const res = await fetchWithRetry(url, {
+  const fetchUrl = rewriteBannedCdn(url);
+  const res = await fetchWithRetry(fetchUrl, {
     'User-Agent':
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
     ...headers,
   });
-  if (!res.ok) throw new Error(`download failed ${res.status} ${url}`);
+  if (!res.ok) throw new Error(`download failed ${res.status} ${fetchUrl}`);
   const mime = res.headers.get('content-type');
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length === 0) throw new Error(`download empty ${url}`);

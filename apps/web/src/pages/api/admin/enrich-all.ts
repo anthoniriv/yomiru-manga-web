@@ -12,21 +12,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isAdmin(cookies)) return new Response('forbidden', { status: 403 });
 
   const form = await request.formData().catch(() => null);
-  const limit = parseInt((form?.get('limit') as string | null) ?? '50', 10);
+  const url = new URL(request.url);
+  const limit = parseInt((form?.get('limit') as string | null) ?? url.searchParams.get('limit') ?? '50', 10);
+  const force = (form?.get('force') as string | null) === 'true' || url.searchParams.get('force') === 'true';
 
   const db = getPgDb();
 
-  // Only available-in-R2 series with missing core fields
+  const baseWhere = sql`${series.id} IN (SELECT DISTINCT series_id FROM ${chapters} WHERE download_status='completed')`;
   const candidates = await db
     .select()
     .from(series)
     .where(
-      and(
-        sql`${series.id} IN (SELECT DISTINCT series_id FROM ${chapters} WHERE download_status='completed')`,
-        or(isNull(series.rating), isNull(series.year), isNull(series.author), eq(series.status, 'unknown'))!,
-      ),
+      force
+        ? baseWhere
+        : and(
+            baseWhere,
+            or(isNull(series.rating), isNull(series.year), isNull(series.author), eq(series.status, 'unknown'))!,
+          ),
     )
-    .limit(Math.max(1, Math.min(limit, 2000)));
+    .limit(Math.max(1, Math.min(limit, 3000)));
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -48,19 +52,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             continue;
           }
           const patch: Record<string, unknown> = {};
-          if (row.rating == null && mal.score != null) patch.rating = mal.score;
-          if ((row.voteCount ?? 0) === 0 && mal.scoredBy) patch.voteCount = mal.scoredBy;
-          if (row.year == null && mal.year != null) patch.year = mal.year;
-          if (!row.author && mal.authors.length > 0) patch.author = mal.authors[0];
-          if ((!row.description || row.description.length < 40) && mal.synopsis) patch.description = mal.synopsis;
-          if ((row.status === 'unknown' || !row.status) && mal.status !== 'unknown') patch.status = mal.status;
-          if (!row.isAdult && mal.isAdult) patch.isAdult = true;
-          if (!row.coverSourceUrl && mal.coverUrl) patch.coverSourceUrl = mal.coverUrl;
+          if (force || row.rating == null) if (mal.score != null) patch.rating = mal.score;
+          if (force || (row.voteCount ?? 0) === 0) if (mal.scoredBy) patch.voteCount = mal.scoredBy;
+          if (force || row.year == null) if (mal.year != null) patch.year = mal.year;
+          if (force || !row.author) if (mal.authors.length > 0) patch.author = mal.authors[0];
+          if (force || !row.description || row.description.length < 40) if (mal.synopsis) patch.description = mal.synopsis;
+          if (force || row.status === 'unknown' || !row.status) if (mal.status !== 'unknown') patch.status = mal.status;
+          if (mal.isAdult) patch.isAdult = true;
+          if (force || !row.coverSourceUrl) if (mal.coverUrl) patch.coverSourceUrl = mal.coverUrl;
           patch.updatedAt = new Date();
 
           await db.update(series).set(patch).where(eq(series.id, row.id));
 
           const genres = [...new Set([...mal.genres, ...mal.themes, ...mal.demographics])];
+          if (force) {
+            await db.delete(seriesGenres).where(eq(seriesGenres.seriesId, row.id));
+          }
           if (genres.length > 0) {
             await db
               .insert(seriesGenres)

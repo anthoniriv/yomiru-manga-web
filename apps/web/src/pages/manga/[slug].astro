@@ -189,6 +189,15 @@ const statusKey = series.status?.toLowerCase() ?? '';
                   Sync banner (AniList)
                 </button>
               </form>
+              <form method="POST" action={`/api/series/${slug}/enrich?force=true`}>
+                <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                <button
+                  type="submit"
+                  class="rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-zinc-950 transition-colors"
+                >
+                  Re-sync MAL (force)
+                </button>
+              </form>
             </div>
           )}
           {bannerStatus === 'ok' && (

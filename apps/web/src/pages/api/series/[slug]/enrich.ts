@@ -20,8 +20,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
   const mal = await findMalForSeries(row.title, alt);
 
   const form = await request.formData().catch(() => null);
+  const url = new URL(request.url);
   const redirectTo = (form?.get('redirect') as string | null) ?? `/manga/${slug}`;
   const asJson = request.headers.get('accept')?.includes('json');
+  const force = (form?.get('force') as string | null) === 'true' || url.searchParams.get('force') === 'true';
 
   if (!mal) {
     if (asJson) return new Response(JSON.stringify({ ok: false, reason: 'not_found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
@@ -29,19 +31,22 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
   }
 
   const patch: Record<string, unknown> = {};
-  if (row.rating == null && mal.score != null) patch.rating = mal.score;
-  if ((row.voteCount ?? 0) === 0 && mal.scoredBy) patch.voteCount = mal.scoredBy;
-  if (row.year == null && mal.year != null) patch.year = mal.year;
-  if (!row.author && mal.authors.length > 0) patch.author = mal.authors[0];
-  if ((!row.description || row.description.length < 40) && mal.synopsis) patch.description = mal.synopsis;
-  if ((row.status === 'unknown' || !row.status) && mal.status !== 'unknown') patch.status = mal.status;
-  if (!row.isAdult && mal.isAdult) patch.isAdult = true;
-  if (!row.coverSourceUrl && mal.coverUrl) patch.coverSourceUrl = mal.coverUrl;
+  if (force || row.rating == null) if (mal.score != null) patch.rating = mal.score;
+  if (force || (row.voteCount ?? 0) === 0) if (mal.scoredBy) patch.voteCount = mal.scoredBy;
+  if (force || row.year == null) if (mal.year != null) patch.year = mal.year;
+  if (force || !row.author) if (mal.authors.length > 0) patch.author = mal.authors[0];
+  if (force || !row.description || row.description.length < 40) if (mal.synopsis) patch.description = mal.synopsis;
+  if (force || row.status === 'unknown' || !row.status) if (mal.status !== 'unknown') patch.status = mal.status;
+  if (mal.isAdult) patch.isAdult = true;
+  if (force || !row.coverSourceUrl) if (mal.coverUrl) patch.coverSourceUrl = mal.coverUrl;
   patch.updatedAt = new Date();
 
   await db.update(series).set(patch).where(eq(series.id, row.id));
 
   const genres = [...new Set([...mal.genres, ...mal.themes, ...mal.demographics])];
+  if (force) {
+    await db.delete(seriesGenres).where(eq(seriesGenres.seriesId, row.id));
+  }
   if (genres.length > 0) {
     await db
       .insert(seriesGenres)

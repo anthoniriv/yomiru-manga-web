@@ -70,20 +70,63 @@ function normalize(entry: any): MalResult {
   };
 }
 
+function normTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function titleScore(query: string, entry: any): number {
+  const q = normTitle(query);
+  const candidates = [
+    entry.title,
+    entry.title_english,
+    entry.title_japanese,
+    ...(Array.isArray(entry.titles) ? entry.titles.map((t: any) => t.title) : []),
+    ...(Array.isArray(entry.title_synonyms) ? entry.title_synonyms : []),
+  ]
+    .filter(Boolean)
+    .map((t: string) => normTitle(t));
+
+  let best = 0;
+  for (const c of candidates) {
+    if (!c) continue;
+    if (c === q) return 100;
+    if (c.startsWith(q) || q.startsWith(c)) best = Math.max(best, 80);
+    else if (c.includes(q) || q.includes(c)) best = Math.max(best, 60);
+    else {
+      const qw = new Set(q.split(' '));
+      const cw = c.split(' ');
+      const hits = cw.filter((w) => qw.has(w)).length;
+      if (hits > 0) best = Math.max(best, Math.round((hits / Math.max(qw.size, cw.length)) * 50));
+    }
+  }
+  return best;
+}
+
 export async function searchMal(query: string): Promise<MalResult | null> {
-  // order by `members` desc: most members first — usually the main work, not spinoffs.
-  const url = `${JIKAN}/manga?q=${encodeURIComponent(query)}&limit=5&order_by=members&sort=desc`;
+  const url = `${JIKAN}/manga?q=${encodeURIComponent(query)}&limit=10&order_by=members&sort=desc`;
   const data = await jfetch(url);
   const list: any[] = Array.isArray(data?.data) ? data.data : [];
   if (list.length === 0) return null;
 
-  // Prefer manga type entries and drop spinoffs/doujinshi/novel
-  const preferred = list.find((e) => {
+  const mangaTypes = list.filter((e) => {
     const type = (e.type ?? '').toLowerCase();
-    return type === 'manga' || type === 'manhwa' || type === 'manhua';
-  }) ?? list[0];
+    return type === 'manga' || type === 'manhwa' || type === 'manhua' || type === 'oel';
+  });
+  const pool = mangaTypes.length > 0 ? mangaTypes : list;
 
-  return normalize(preferred);
+  const scored = pool
+    .map((e) => ({ entry: e, score: titleScore(query, e) }))
+    .sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (!best || best.score < 50) return null;
+
+  return normalize(best.entry);
 }
 
 export async function findMalForSeries(

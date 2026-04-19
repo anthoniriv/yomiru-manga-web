@@ -45,36 +45,28 @@ function resolveUrl(): string {
   return url;
 }
 
-// Extrae host+port+db para identificar "misma conexión lógica". Hyperdrive rota
-// user/pass por request, pero el endpoint del proxy es estable dentro del isolate.
-// Comparar URLs completas haría reconnect por request → explosion de pools.
-function connectionKey(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}:${u.port || '5432'}${u.pathname}`;
-  } catch {
-    return url;
-  }
-}
-
-// Cache the connection pool per isolate. In Workers persiste entre requests
-// warm del mismo isolate — skip TCP+TLS+auth handshake (~500ms).
+// En Cloudflare Workers NO se puede reusar I/O (sockets, streams) entre requests:
+//   "Cannot perform I/O on behalf of a different request"
+// Hyperdrive hace el pooling real por nosotros — cada request crea un nuevo
+// cliente postgres que se conecta al proxy local de Hyperdrive (<10ms overhead).
+// En Node (dev/scripts) sí cacheamos para evitar handshake repetido.
 export function getPgDb(): PgDB {
   const url = resolveUrl();
-  const key = connectionKey(url);
 
-  if (_db && _url === key) return _db;
+  if (!isWorkers && _db && _url === url) return _db;
 
   const sql = postgres(url, {
-    max: isWorkers ? 3 : 10,
+    max: isWorkers ? 5 : 10,
     prepare: false, // required for Supabase transaction pooler (port 6543)
     fetch_types: false,
-    idle_timeout: isWorkers ? 20 : undefined,
+    idle_timeout: isWorkers ? 10 : undefined,
   });
   const db = drizzle(sql, { schema });
-  _sql = sql;
-  _db = db;
-  _url = key;
+  if (!isWorkers) {
+    _sql = sql;
+    _db = db;
+    _url = url;
+  }
   return db;
 }
 

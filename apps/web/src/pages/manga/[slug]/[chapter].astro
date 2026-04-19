@@ -85,17 +85,13 @@ const nextUrl = nextChapter ? `/manga/${slug}/${nextChapter.number}` : null;
       aria-hidden="true"
       role="status"
     >
-      <svg width="96" height="96" viewBox="0 0 24 24" class="yomiru-bolt yomiru-nav-bolt">
-        <defs>
-          <clipPath id="nav-bolt-clip-r"><path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" /></clipPath>
-          <linearGradient id="nav-bolt-grad-r" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#4A1A00" />
-            <stop offset="100%" stop-color="#E95000" />
-          </linearGradient>
-        </defs>
-        <path d="M13 2 L4 14 h6 l-2 8 L20 10 h-6 l1 -8 Z" fill="none" stroke="#E95000" stroke-width="1.4" stroke-linejoin="round" />
-        <g clip-path="url(#nav-bolt-clip-r)"><rect x="0" width="24" fill="url(#nav-bolt-grad-r)" class="yomiru-bolt-fill" /></g>
-      </svg>
+      <img
+        src="/shinji-loader.gif"
+        alt=""
+        width="192"
+        height="192"
+        class="rounded-2xl shadow-2xl shadow-accent/30 ring-1 ring-accent/30"
+      />
     </div>
     <script is:inline>
       (function () {

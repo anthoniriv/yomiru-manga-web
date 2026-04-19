@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, ilike, inArray, sql } from 'drizzle-orm';
 import { getPgDb, pgSchema } from '@yomiru/db';
 import { timed } from './perf';
 
@@ -181,26 +181,27 @@ export async function getTopSeries(limit: number, opts: ListOpts = {}) {
   });
 }
 
-// Colapsado a 1 query: JOIN series + MAX(downloaded_at) agrupado.
-// Antes eran 2 queries (IDs, luego datos).
+// Colapsado a 1 query con drizzle select (mapeo camelCase automático).
 export async function getLatestSeries(limit: number, opts: ListOpts = {}): Promise<Series[]> {
   return timed('getLatestSeries', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
-    const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
     const lim = Math.max(1, Math.floor(limit));
 
-    const result = await db.execute<Series & { last_upload: string | null }>(sql`
-      SELECT ${series}.*, MAX(${chapters.downloadedAt}) AS last_upload
-      FROM ${series}
-      JOIN ${chapters} ON ${chapters.seriesId} = ${series.id}
-      WHERE ${chapters.downloadStatus} = 'completed' AND ${adultFilter}
-      GROUP BY ${series.id}
-      ORDER BY last_upload DESC NULLS LAST
-      LIMIT ${sql.raw(String(lim))}
-    `);
-    const rows = (result as unknown as { rows?: Series[] }).rows ?? (result as unknown as Series[]);
-    return Array.isArray(rows) ? rows : [];
+    const rows = await db
+      .select(getTableColumns(series))
+      .from(series)
+      .innerJoin(chapters, eq(chapters.seriesId, series.id))
+      .where(
+        and(
+          eq(chapters.downloadStatus, 'completed'),
+          showAdult ? undefined : eq(series.isAdult, false),
+        ),
+      )
+      .groupBy(series.id)
+      .orderBy(desc(sql`MAX(${chapters.downloadedAt})`))
+      .limit(lim);
+    return rows as Series[];
   });
 }
 
@@ -381,25 +382,27 @@ export async function getFeaturedSeries(limit: number, opts: ListOpts = {}) {
   });
 }
 
-// Colapsado a 1 query (antes: 2). JOIN + GROUP BY + ORDER en vez de IDs→fetch.
+// 1 query con drizzle select — mapeo camelCase automático, evita row mapping bug.
 export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {}): Promise<Series[]> {
   return timed('getRecentlyUpdatedSeries', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
-    const adultFilter = showAdult ? sql`TRUE` : sql`${series.isAdult} = false`;
     const lim = Math.max(1, Math.floor(limit));
 
-    const result = await db.execute<Series & { last_upload: string | null }>(sql`
-      SELECT ${series}.*, MAX(${chapters.downloadedAt}) AS last_upload
-      FROM ${series}
-      JOIN ${chapters} ON ${chapters.seriesId} = ${series.id}
-      WHERE ${chapters.downloadStatus} = 'completed' AND ${adultFilter}
-      GROUP BY ${series.id}
-      ORDER BY last_upload DESC NULLS LAST
-      LIMIT ${sql.raw(String(lim))}
-    `);
-    const rows = (result as unknown as { rows?: Series[] }).rows ?? (result as unknown as Series[]);
-    return Array.isArray(rows) ? rows : [];
+    const rows = await db
+      .select(getTableColumns(series))
+      .from(series)
+      .innerJoin(chapters, eq(chapters.seriesId, series.id))
+      .where(
+        and(
+          eq(chapters.downloadStatus, 'completed'),
+          showAdult ? undefined : eq(series.isAdult, false),
+        ),
+      )
+      .groupBy(series.id)
+      .orderBy(desc(sql`MAX(${chapters.downloadedAt})`))
+      .limit(lim);
+    return rows as Series[];
   });
 }
 

@@ -25,6 +25,8 @@ export const series = mangaSchema.table(
     description: text('description'),
     coverPath: text('cover_path'),
     coverSourceUrl: text('cover_source_url'),
+    bannerPath: text('banner_path'),
+    bannerSourceUrl: text('banner_source_url'),
     rating: real('rating'),
     voteCount: integer('vote_count').notNull().default(0),
     popularity: real('popularity').notNull().default(0),

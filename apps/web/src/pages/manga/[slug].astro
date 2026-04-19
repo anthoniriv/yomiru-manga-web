@@ -22,6 +22,7 @@ const oldestChapter = chapters[0] ?? null;
 const latestChapter = chapters[chapters.length - 1] ?? null;
 const coverUrl = getCoverUrl(series);
 const enrichStatus = Astro.url.searchParams.get('enrich');
+const bannerStatus = Astro.url.searchParams.get('banner');
 
 let altTitles: string[] = [];
 try {
@@ -173,6 +174,36 @@ const statusKey = series.status?.toLowerCase() ?? '';
           {enrichStatus === 'not_found' && (
             <div class="mt-4 text-xs px-3 py-2 rounded-md bg-accent/10 text-accent-300 border border-accent/30">
               No se encontró una coincidencia para este título.
+            </div>
+          )}
+
+          {admin && (
+            <div class="mt-6 flex flex-wrap items-center gap-2 border-t border-zinc-800/60 pt-4">
+              <span class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Admin</span>
+              <form method="POST" action={`/api/series/${slug}/banner`}>
+                <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                <button
+                  type="submit"
+                  class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-accent/50 hover:text-accent transition-colors"
+                >
+                  Sync banner (AniList)
+                </button>
+              </form>
+            </div>
+          )}
+          {bannerStatus === 'ok' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              Banner sincronizado desde AniList.
+            </div>
+          )}
+          {bannerStatus === 'not_found' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-accent/10 text-accent-300 border border-accent/30">
+              AniList no tiene banner para este título.
+            </div>
+          )}
+          {bannerStatus === 'fetch_failed' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-red-500/10 text-red-300 border border-red-500/20">
+              Error descargando el banner.
             </div>
           )}
         </div>

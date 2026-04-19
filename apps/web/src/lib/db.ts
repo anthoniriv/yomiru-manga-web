@@ -272,7 +272,17 @@ export async function getChaptersWithPreviewsBySeries(
 
 export async function getSeriesBackdropUrl(seriesId: string): Promise<string | null> {
   return timed('getSeriesBackdropUrl', async () => {
-    const rows = await getPgDb()
+    const db = getPgDb();
+
+    const [s] = await db
+      .select({ bannerPath: series.bannerPath, bannerSourceUrl: series.bannerSourceUrl })
+      .from(series)
+      .where(eq(series.id, seriesId))
+      .limit(1);
+    if (s?.bannerPath) return getStorageUrl(s.bannerPath);
+    if (s?.bannerSourceUrl) return s.bannerSourceUrl;
+
+    const rows = await db
       .select({
         storagePath: pages.storagePath,
         sourceUrl: pages.sourceUrl,
@@ -302,8 +312,23 @@ export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<str
     const uniqueIds = [...new Set(seriesIds.filter(Boolean))];
     if (uniqueIds.length === 0) return new Map();
 
-    const idList = sql.join(uniqueIds.map((id) => sql`${id}`), sql`, `);
-    const result = await getPgDb().execute<{
+    const db = getPgDb();
+    const bannerRows = await db
+      .select({ id: series.id, bannerPath: series.bannerPath, bannerSourceUrl: series.bannerSourceUrl })
+      .from(series)
+      .where(inArray(series.id, uniqueIds));
+
+    const map = new Map<string, string>();
+    const needPage: string[] = [];
+    for (const r of bannerRows) {
+      if (r.bannerPath) map.set(r.id, getStorageUrl(r.bannerPath));
+      else if (r.bannerSourceUrl) map.set(r.id, r.bannerSourceUrl);
+      else needPage.push(r.id);
+    }
+    if (needPage.length === 0) return map;
+
+    const idList = sql.join(needPage.map((id) => sql`${id}`), sql`, `);
+    const result = await db.execute<{
       series_id: string;
       storage_path: string | null;
       source_url: string | null;
@@ -322,7 +347,6 @@ export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<str
     `);
 
     const rows = (result as unknown as { rows?: typeof result }).rows ?? (result as unknown as typeof result);
-    const map = new Map<string, string>();
     for (const r of Array.isArray(rows) ? rows : []) {
       const url = r.storage_path ? getStorageUrl(r.storage_path) : r.source_url;
       if (url) map.set(r.series_id, url);
@@ -606,9 +630,13 @@ export async function getSeriesPageBundle(
     previewUrl: previewPath ? getStorageUrl(previewPath) : null,
   }));
   const backdrop = backdropRow[0];
-  const backgroundUrl = backdrop?.storagePath
-    ? getStorageUrl(backdrop.storagePath)
-    : backdrop?.sourceUrl ?? null;
+  const backgroundUrl = s.bannerPath
+    ? getStorageUrl(s.bannerPath)
+    : s.bannerSourceUrl
+      ? s.bannerSourceUrl
+      : backdrop?.storagePath
+        ? getStorageUrl(backdrop.storagePath)
+        : backdrop?.sourceUrl ?? null;
 
   return {
     series: s,

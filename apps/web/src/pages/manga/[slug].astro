@@ -94,8 +94,13 @@ const statusKey = series.status?.toLowerCase() ?? '';
               </div>
             )}
             <div>
-              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Capítulos</p>
-              <p class="text-white font-black">{chapters.length}</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-1">Disponibles</p>
+              <p class="text-white font-black">
+                {chapters.length}
+                {latestChapter && latestChapter.number > chapters.length && (
+                  <span class="text-zinc-500 text-sm font-bold"> / {latestChapter.number}</span>
+                )}
+              </p>
             </div>
           </div>
         </aside>
@@ -184,7 +189,7 @@ const statusKey = series.status?.toLowerCase() ?? '';
             <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
               Capítulos
               <span class="align-middle text-sm font-black not-italic tracking-[0.16em] text-zinc-600">
-                {chapters.length} publicados
+                {chapters.length} disponibles
               </span>
             </h2>
           </div>

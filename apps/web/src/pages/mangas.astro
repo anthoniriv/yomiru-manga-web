@@ -82,7 +82,7 @@ function hrefWith(next: Record<string, string | number | undefined>) {
     <form
       method="GET"
       action="/mangas"
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/50"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto_auto] gap-3 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 items-end"
     >
       {query && <input type="hidden" name="q" value={query} />}
       <input type="hidden" name="view" value={view} />
@@ -120,16 +120,16 @@ function hrefWith(next: Record<string, string | number | undefined>) {
 
       <div class="space-y-1">
         <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Vista</span>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="inline-flex rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
           <a
             href={hrefWith({ view: 'grid', page: 1 })}
             aria-label="Vista en cuadrícula"
             title="Vista en cuadrícula"
-            class={`flex items-center justify-center rounded-lg border px-3 py-2.5 transition-colors ${
-              view === 'grid' ? 'bg-accent text-zinc-950 border-accent' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'
+            class={`flex items-center justify-center px-3 py-2.5 transition-colors ${
+              view === 'grid' ? 'bg-accent text-zinc-950' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
             </svg>
           </a>
@@ -137,11 +137,11 @@ function hrefWith(next: Record<string, string | number | undefined>) {
             href={hrefWith({ view: 'list', page: 1 })}
             aria-label="Vista en lista"
             title="Vista en lista"
-            class={`flex items-center justify-center rounded-lg border px-3 py-2.5 transition-colors ${
-              view === 'list' ? 'bg-accent text-zinc-950 border-accent' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'
+            class={`flex items-center justify-center px-3 py-2.5 transition-colors border-l border-zinc-800 ${
+              view === 'list' ? 'bg-accent text-zinc-950' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
             </svg>
           </a>
@@ -151,13 +151,13 @@ function hrefWith(next: Record<string, string | number | undefined>) {
       <div class="flex items-end gap-2">
         <button
           type="submit"
-          class="w-full lg:w-auto rounded-lg bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-950 hover:bg-accent transition-colors"
+          class="rounded-lg bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-950 hover:bg-accent transition-colors whitespace-nowrap"
         >
           Filtrar
         </button>
         <a
           href="/mangas"
-          class="rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+          class="rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors whitespace-nowrap"
         >
           Limpiar
         </a>

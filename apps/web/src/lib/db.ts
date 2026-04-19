@@ -156,7 +156,7 @@ export async function getCatalogFilters(opts: ListOpts = {}) {
       db
         .select({ year: series.year })
         .from(series)
-        .where(and(available, adultFilter, sql`${series.year} IS NOT NULL`))
+        .where(and(available, adultFilter, sql`${series.year} IS NOT NULL`, sql`${series.year} >= 1900`))
         .groupBy(series.year)
         .orderBy(desc(series.year)),
     ]);
@@ -199,7 +199,7 @@ export async function getLatestSeries(limit: number, opts: ListOpts = {}): Promi
         ),
       )
       .groupBy(series.id)
-      .orderBy(desc(sql`MAX(${chapters.downloadedAt})`))
+      .orderBy(desc(sql`MAX(COALESCE(${chapters.downloadedAt}, ${chapters.createdAt}))`))
       .limit(lim);
     return rows as Series[];
   });
@@ -256,7 +256,10 @@ export async function getChaptersWithPreviewsBySeries(
         previewSourceUrl: pages.sourceUrl,
       })
       .from(chapters)
-      .leftJoin(pages, and(eq(pages.chapterId, chapters.id), eq(pages.idx, 0)))
+      .leftJoin(pages, and(
+        eq(pages.chapterId, chapters.id),
+        eq(pages.idx, sql`GREATEST(FLOOR(COALESCE(${chapters.pageCount}, 1) / 2), 0)::int`),
+      ))
       .where(where)
       .orderBy(asc(chapters.number));
 
@@ -400,10 +403,18 @@ export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {
         ),
       )
       .groupBy(series.id)
-      .orderBy(desc(sql`MAX(${chapters.downloadedAt})`))
+      .orderBy(desc(sql`MAX(COALESCE(${chapters.downloadedAt}, ${chapters.createdAt}))`))
       .limit(lim);
     return rows as Series[];
   });
+}
+
+function normalizeSourceKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/^www\./, '')
+    .replace(/\.(com|to|net|org|io|co|app)$/i, '')
+    .replace(/[-_\s]+/g, '');
 }
 
 export async function getSourcesSummary(opts: ListOpts = {}) {
@@ -419,15 +430,27 @@ export async function getSourcesSummary(opts: ListOpts = {}) {
         AND ${series.id} IN (SELECT DISTINCT ${chapters.seriesId} FROM ${chapters} WHERE ${chapters.downloadStatus} = 'completed')
       GROUP BY ${series.sourceName}
       ORDER BY count(*) DESC
-      LIMIT 20
     `);
 
     const rows = (result as unknown as { rows?: Array<{ source: string; count: string }> }).rows
       ?? (result as unknown as Array<{ source: string; count: string }>);
-    return (Array.isArray(rows) ? rows : []).map((r) => ({
-      source: r.source,
-      count: Number(r.count),
-    }));
+
+    const merged = new Map<string, { source: string; count: number }>();
+    for (const r of Array.isArray(rows) ? rows : []) {
+      if (!r.source) continue;
+      const key = normalizeSourceKey(r.source);
+      const count = Number(r.count);
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, { source: r.source, count });
+      } else {
+        existing.count += count;
+        if (r.source.length < existing.source.length) existing.source = r.source;
+      }
+    }
+    return [...merged.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
   });
 }
 
@@ -539,7 +562,10 @@ export async function getSeriesPageBundle(
           })
           .from(chapters)
           .innerJoin(series, eq(series.id, chapters.seriesId))
-          .leftJoin(pages, and(eq(pages.chapterId, chapters.id), eq(pages.idx, 0)))
+          .leftJoin(pages, and(
+        eq(pages.chapterId, chapters.id),
+        eq(pages.idx, sql`GREATEST(FLOOR(COALESCE(${chapters.pageCount}, 1) / 2), 0)::int`),
+      ))
           .where(
             onlyCompleted
               ? and(eq(series.slug, slug), eq(chapters.downloadStatus, 'completed'))!

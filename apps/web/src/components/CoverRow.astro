@@ -46,6 +46,13 @@ const {
         <div class="flex gap-4 md:grid md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-6">
           {items.map((s, i) => {
             const statusLabel = formatStatus(s.status);
+            const statusKey = s.status?.toLowerCase() ?? '';
+            const statusClass =
+              statusKey === 'ongoing' ? 'bg-emerald-500 text-zinc-950' :
+              statusKey === 'completed' || statusKey === 'finished' ? 'bg-accent text-zinc-950' :
+              statusKey === 'hiatus' ? 'bg-amber-500 text-zinc-950' :
+              statusKey === 'cancelled' ? 'bg-accent text-zinc-950' :
+              'bg-zinc-700 text-white';
             return (
             <a
               href={`/manga/${s.slug}`}
@@ -59,7 +66,7 @@ const {
                     </span>
                   )}
                   {statusLabel && (
-                    <span class="absolute top-3 right-3 z-20 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-zinc-950">
+                    <span class={`absolute top-3 right-3 z-20 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${statusClass}`}>
                       {statusLabel}
                     </span>
                   )}
@@ -92,11 +99,10 @@ const {
                   </div>
                 </div>
                 {s.sourceName && (
-                  <div class="px-4 py-3 bg-zinc-900/90 border-t border-zinc-800/50 flex items-center justify-between group-hover:bg-zinc-800 transition-colors">
-                    <span class="text-[9px] font-black text-zinc-500 uppercase tracking-widest truncate">
+                  <div class="px-4 py-3 bg-zinc-900/90 border-t border-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
+                    <span class="text-[9px] font-black text-zinc-500 uppercase tracking-widest truncate block">
                       {s.sourceName.replace(/^www\./, '')}
                     </span>
-                    <div class="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
                   </div>
                 )}
               </div>

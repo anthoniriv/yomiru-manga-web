@@ -5,9 +5,9 @@ export function formatStatus(status?: string | null): string | null {
   const labels: Record<string, string> = {
     ongoing: 'En emisión',
     publishing: 'En emisión',
-    completed: 'Completado',
-    finished: 'Completado',
-    complete: 'Completado',
+    completed: 'Finalizado',
+    finished: 'Finalizado',
+    complete: 'Finalizado',
     hiatus: 'En pausa',
     paused: 'En pausa',
     cancelled: 'Cancelado',

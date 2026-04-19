@@ -97,7 +97,7 @@ export default function ChapterList({ chapters, slug, initialCount = 25, step = 
                 <span className="hidden lg:inline text-xs text-zinc-600 font-bold uppercase tracking-widest tabular-nums">{ch.pageCount} págs</span>
               )}
               <span className="hidden md:inline text-xs text-zinc-600 font-black uppercase tracking-widest">
-                {relativeDate(ch.downloadedAt || ch.publishedAt)}
+                {relativeDate(ch.publishedAt || ch.downloadedAt)}
               </span>
               <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-accent">Leer</span>
             </div>

@@ -1,68 +1,112 @@
 ---
-import Base from '../layouts/Base.astro';
+import AuthLayout from '../layouts/AuthLayout.astro';
+import { getSafeRedirectPath } from '../lib/redirect';
 
-const redirectTo = Astro.url.searchParams.get('redirect') ?? '/';
+const redirectTo = getSafeRedirectPath(Astro.url.searchParams.get('redirect'));
 const error = Astro.url.searchParams.get('error');
 ---
 
-<Base title="Crear cuenta">
-  <div class="max-w-md mx-auto px-4 pt-16 pb-20">
+<AuthLayout title="Crear cuenta">
+  <div class="rounded-3xl border border-zinc-800 bg-zinc-950/80 backdrop-blur-xl shadow-2xl shadow-black/60 p-8 md:p-10">
     <div class="text-center mb-8">
-      <p class="text-accent text-[10px] font-black uppercase tracking-[0.28em]">Yomiru</p>
-      <h1 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white mt-2">
-        Crear cuenta
+      <div class="inline-flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-xl bg-accent flex items-center justify-center shadow-lg shadow-accent/30">
+          <span class="text-zinc-950 text-xl font-black">読</span>
+        </div>
+        <span class="text-2xl font-bold tracking-tight text-white">
+          Yomiru<span class="text-accent">.</span>
+        </span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white">
+        Crea tu cuenta
       </h1>
+      <p class="mt-3 text-sm text-zinc-400">Guarda tus favoritos y sigue tus series.</p>
     </div>
 
     {error && (
-      <div class="mb-4 text-xs px-3 py-2 rounded-md bg-red-500/10 text-red-300 border border-red-500/20">
+      <div class="mb-5 text-xs px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
         {error === 'email_taken' && 'Ese email ya está registrado. Intenta iniciar sesión.'}
         {error === 'weak_password' && 'Contraseña muy débil. Usa al menos 6 caracteres.'}
         {error === 'invalid_email' && 'Email inválido.'}
+        {error === 'rate_limited' && 'Demasiados intentos por ahora. Espera unos minutos y vuelve a probar.'}
+        {error === 'service_unavailable' && 'No pudimos conectar con autenticación. Intenta de nuevo en unos segundos.'}
         {error === 'unknown' && 'Error al crear cuenta. Intenta de nuevo.'}
       </div>
     )}
 
-    <form method="POST" action="/api/auth/register" class="space-y-4">
+    <form method="POST" action="/api/auth/register" class="space-y-5">
       <input type="hidden" name="redirect" value={redirectTo} />
+
       <label class="block">
-        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-1">Email</span>
-        <input
-          type="email"
-          name="email"
-          required
-          autocomplete="email"
-          class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-accent"
-        />
+        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-2">Correo electrónico</span>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </span>
+          <input
+            type="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="ejemplo@correo.com"
+            class="w-full rounded-xl bg-zinc-900 border border-zinc-800 pl-10 pr-4 py-3.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-accent focus:bg-zinc-900"
+          />
+        </div>
       </label>
+
       <label class="block">
-        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-1">Contraseña</span>
-        <input
-          type="password"
-          name="password"
-          required
-          autocomplete="new-password"
-          minlength="6"
-          class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-accent"
-        />
-        <span class="block text-[10px] text-zinc-600 mt-1">Mínimo 6 caracteres.</span>
+        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-2">Contraseña</span>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.104 0 2-.896 2-2V7a2 2 0 10-4 0v2c0 1.104.896 2 2 2zm6 0H6a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2v-6a2 2 0 00-2-2z" />
+            </svg>
+          </span>
+          <input
+            id="register-password"
+            type="password"
+            name="password"
+            required
+            autocomplete="new-password"
+            minlength="6"
+            placeholder="••••••••"
+            class="w-full rounded-xl bg-zinc-900 border border-zinc-800 pl-10 pr-20 py-3.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-accent focus:bg-zinc-900"
+          />
+          <button
+            type="button"
+            data-password-toggle
+            aria-controls="register-password"
+            aria-pressed="false"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-accent transition-colors"
+          >
+            Ver
+          </button>
+        </div>
+        <span class="block text-[10px] text-zinc-600 mt-2">Mínimo 6 caracteres.</span>
       </label>
+
       <button
         type="submit"
-        class="w-full rounded-lg bg-accent px-5 py-3 text-xs font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
+        class="auth-submit w-full inline-flex items-center justify-center gap-3 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.2em] text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
       >
-        Crear cuenta
+        <span>Crear cuenta</span>
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
       </button>
-      <p class="text-[10px] text-zinc-600 text-center">
+
+      <p class="text-[10px] text-zinc-500 text-center">
         Te enviaremos un link de verificación por email.
       </p>
     </form>
 
-    <div class="mt-6 text-center text-xs text-zinc-500">
+    <p class="mt-8 text-center text-sm text-zinc-400">
       ¿Ya tienes cuenta?
-      <a href={`/login?redirect=${encodeURIComponent(redirectTo)}`} class="text-accent hover:text-white font-black uppercase tracking-widest ml-1">
-        Entrar
+      <a href={`/login?redirect=${encodeURIComponent(redirectTo)}`} class="ml-1 text-accent hover:text-white font-black transition-colors">
+        Inicia sesión
       </a>
-    </div>
+    </p>
   </div>
-</Base>
+</AuthLayout>

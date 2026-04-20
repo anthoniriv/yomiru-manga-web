@@ -101,6 +101,7 @@ try {
         document.addEventListener('click', (e) => {
           const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
           if (!a) return;
+          if (a.hasAttribute('data-no-loader')) return;
           if (a.target === '_blank' || a.hasAttribute('download')) return;
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
           const href = a.getAttribute('href') || '';
@@ -109,6 +110,7 @@ try {
             const url = new URL(href, location.href);
             if (url.origin !== location.origin) return;
             if (url.pathname === location.pathname && url.search === location.search) return;
+            if (url.pathname === '/login' || url.pathname === '/registro' || url.pathname === '/recuperar') return;
           } catch { return; }
           show();
         });
@@ -116,6 +118,7 @@ try {
           const f = e.target;
           if (!(f instanceof HTMLFormElement)) return;
           if (f.method.toLowerCase() !== 'post') return;
+          if (f.hasAttribute('data-no-loader')) return;
           show();
         });
         window.addEventListener('pageshow', hide);
@@ -150,14 +153,14 @@ try {
             </svg>
           </a>
           <div class="hidden md:block h-6 w-px bg-zinc-800"></div>
-          <form method="POST" action="/api/nsfw" class="flex items-center">
+          <form method="POST" action="/api/nsfw" class="flex items-center" data-no-loader>
             <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />
             <input type="hidden" name="redirect" value={currentPath} />
             <button
               type="submit"
               aria-pressed={showAdult ? 'true' : 'false'}
               title={showAdult ? 'Ocultar contenido +18' : 'Mostrar contenido +18'}
-              class={`w-9 h-9 rounded-full flex items-center justify-center font-black text-[10px] tracking-tight transition-all shadow-lg ${
+              class={`min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-full flex items-center justify-center font-black text-[10px] tracking-tight transition-all shadow-lg touch-manipulation ${
                 showAdult
                   ? 'bg-accent text-zinc-950 shadow-accent/30'
                   : 'bg-white text-zinc-950 shadow-white/5 hover:bg-accent hover:shadow-accent/30'
@@ -183,6 +186,7 @@ try {
           ) : (
             <a
               href={`/login?redirect=${encodeURIComponent(currentPath)}`}
+              data-no-loader
               class="rounded-full bg-white text-zinc-950 px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-accent transition-colors"
             >
               Entrar

@@ -1,0 +1,131 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+import { getUser } from '../lib/supabase';
+
+export const prerender = false;
+
+const error = Astro.url.searchParams.get('error');
+const { user } = await getUser(Astro.request, Astro.cookies);
+---
+
+<AuthLayout title="Restablecer contraseña">
+  <div class="rounded-3xl border border-zinc-800 bg-zinc-950/80 backdrop-blur-xl shadow-2xl shadow-black/60 p-8 md:p-10">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-xl bg-accent flex items-center justify-center shadow-lg shadow-accent/30">
+          <span class="text-zinc-950 text-xl font-black">読</span>
+        </div>
+        <span class="text-2xl font-bold tracking-tight text-white">
+          Yomiru<span class="text-accent">.</span>
+        </span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white">
+        Nueva contraseña
+      </h1>
+      <p class="mt-3 text-sm text-zinc-400">Elige una contraseña nueva para volver a entrar.</p>
+    </div>
+
+    {!user && (
+      <div class="space-y-5">
+        <div class="text-xs px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
+          El link expiró o no es válido. Pide uno nuevo para cambiar tu contraseña.
+        </div>
+        <a
+          href="/recuperar"
+          class="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.2em] text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
+        >
+          Pedir nuevo link
+        </a>
+      </div>
+    )}
+
+    {user && (
+      <>
+        {error && (
+          <div class="mb-5 text-xs px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
+            {error === 'weak_password' && 'Usa al menos 6 caracteres.'}
+            {error === 'mismatch' && 'Las contraseñas no coinciden.'}
+            {error === 'invalid_link' && 'El link expiró o no es válido. Pide uno nuevo.'}
+            {error === 'unknown' && 'No pudimos actualizar la contraseña. Intenta de nuevo.'}
+          </div>
+        )}
+
+        <form method="POST" action="/api/auth/update-password" class="space-y-5">
+          <label class="block">
+            <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-2">Contraseña nueva</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.104 0 2-.896 2-2V7a2 2 0 10-4 0v2c0 1.104.896 2 2 2zm6 0H6a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2v-6a2 2 0 00-2-2z" />
+                </svg>
+              </span>
+              <input
+                id="reset-password"
+                type="password"
+                name="password"
+                required
+                autocomplete="new-password"
+                minlength="6"
+                placeholder="••••••••"
+                class="w-full rounded-xl bg-zinc-900 border border-zinc-800 pl-10 pr-20 py-3.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-accent focus:bg-zinc-900"
+              />
+              <button
+                type="button"
+                data-password-toggle
+                aria-controls="reset-password"
+                aria-pressed="false"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-accent transition-colors"
+              >
+                Ver
+              </button>
+            </div>
+          </label>
+
+          <label class="block">
+            <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-2">Confirmar contraseña</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.104 0 2-.896 2-2V7a2 2 0 10-4 0v2c0 1.104.896 2 2 2zm6 0H6a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2v-6a2 2 0 00-2-2z" />
+                </svg>
+              </span>
+              <input
+                id="reset-confirm-password"
+                type="password"
+                name="confirmPassword"
+                required
+                autocomplete="new-password"
+                minlength="6"
+                placeholder="••••••••"
+                class="w-full rounded-xl bg-zinc-900 border border-zinc-800 pl-10 pr-20 py-3.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-accent focus:bg-zinc-900"
+              />
+              <button
+                type="button"
+                data-password-toggle
+                aria-controls="reset-confirm-password"
+                aria-pressed="false"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-accent transition-colors"
+              >
+                Ver
+              </button>
+            </div>
+            <span class="block text-[10px] text-zinc-600 mt-2">Mínimo 6 caracteres.</span>
+          </label>
+
+          <button
+            type="submit"
+            class="auth-submit w-full inline-flex items-center justify-center gap-3 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.2em] text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
+          >
+            <span>Actualizar contraseña</span>
+          </button>
+        </form>
+      </>
+    )}
+
+    <p class="mt-8 text-center text-sm text-zinc-400">
+      <a href="/login" class="text-accent hover:text-white font-black transition-colors">
+        ← Volver a login
+      </a>
+    </p>
+  </div>
+</AuthLayout>

@@ -8,4 +8,9 @@ export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
   integrations: [react(), tailwind()],
+  vite: {
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+    },
+  },
 });

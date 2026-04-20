@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirma tu cuenta</title>
+  </head>
+  <body style="margin:0;background:#070707;color:#f7f7f7;font-family:Inter,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#070707;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border:1px solid #27272a;background:#0b0b0d;border-radius:18px;overflow:hidden;">
+            <tr>
+              <td style="padding:0;background:linear-gradient(135deg,#f15a00 0%,#171717 52%,#09090b 100%);">
+                <div style="padding:32px 28px 42px;background:radial-gradient(circle at 78% 10%,rgba(255,255,255,.18),transparent 24%);">
+                  <div style="display:inline-block;background:#f15a00;color:#09090b;border-radius:12px;padding:12px 14px;font-size:24px;font-weight:900;line-height:1;">読</div>
+                  <h1 style="margin:22px 0 0;font-size:34px;line-height:1.02;letter-spacing:.02em;text-transform:uppercase;font-style:italic;color:#fff;">Activa tu pase</h1>
+                  <p style="margin:12px 0 0;color:#f4c7ad;font-size:15px;line-height:1.6;">Tu biblioteca te espera. Confirma tu correo y vuelve a Yomiru.</p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 28px;">
+                <p style="margin:0 0 18px;color:#d4d4d8;font-size:15px;line-height:1.7;">Gracias por crear tu cuenta. Usa este botón para verificar tu email y empezar a guardar tus series favoritas.</p>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px 0;">
+                  <tr>
+                    <td style="border-radius:10px;background:#f15a00;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 24px;color:#09090b;text-decoration:none;font-size:13px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;">Confirmar cuenta</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0;color:#71717a;font-size:12px;line-height:1.7;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+                <p style="margin:8px 0 0;word-break:break-all;color:#a1a1aa;font-size:12px;line-height:1.6;">{{ .ConfirmationURL }}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px;border-top:1px solid #27272a;background:#09090b;color:#71717a;font-size:11px;line-height:1.6;">
+                Este enlace es personal. Si no creaste una cuenta en Yomiru, puedes ignorar este correo.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

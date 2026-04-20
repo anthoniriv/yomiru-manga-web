@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getSafeRedirectPath } from '../../../lib/redirect';
 import { createSupabaseServer } from '../../../lib/supabase';
 
 export const prerender = false;
@@ -7,7 +8,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
   const email = String(form.get('email') ?? '').trim();
   const password = String(form.get('password') ?? '');
-  const redirectTo = String(form.get('redirect') ?? '/');
+  const redirectTo = getSafeRedirectPath(form.get('redirect'));
 
   if (!email || !password) {
     return redirect(`/login?redirect=${encodeURIComponent(redirectTo)}&error=unknown`, 303);

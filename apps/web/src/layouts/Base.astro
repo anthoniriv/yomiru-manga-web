@@ -123,9 +123,19 @@ const currentPath = Astro.url.pathname + Astro.url.search;
             Yomiru<span class="text-accent">.</span>
           </span>
         </a>
-        <div class="flex items-center gap-4 md:gap-6">
+        <div class="flex items-center gap-3 md:gap-6">
           <a href="/mangas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Catálogo</a>
           <a href="/preguntas-respuestas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Preguntas</a>
+          <a
+            href="/mangas"
+            aria-label="Buscar"
+            title="Buscar"
+            class="md:hidden w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:border-accent/50 transition-colors"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+          </a>
           <div class="hidden md:block h-6 w-px bg-zinc-800"></div>
           <form method="POST" action="/api/nsfw" class="flex items-center">
             <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />

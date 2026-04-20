@@ -11,6 +11,7 @@ export interface Props {
   showNumbers?: boolean;
   admin?: boolean;
   redirectTo?: string;
+  moreHref?: string;
 }
 
 const {
@@ -20,6 +21,7 @@ const {
   items,
   showNumbers = false,
   admin = false,
+  moreHref,
 } = Astro.props;
 ---
 
@@ -39,6 +41,17 @@ const {
           <p class="text-sm text-zinc-500 max-w-xl">{subtitle}</p>
         )}
       </div>
+      {moreHref && (
+        <a
+          href={moreHref}
+          class="inline-flex items-center gap-2 self-start md:self-auto text-[10px] font-black uppercase tracking-widest text-accent hover:text-white transition-colors"
+        >
+          Ver más
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      )}
     </div>
 
     <div class="relative -mx-4 md:mx-0">

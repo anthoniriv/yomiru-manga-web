@@ -1,0 +1,39 @@
+---
+import { formatGenre } from '../lib/labels';
+export interface Props {
+  genres: Array<{ genre: string; count: number }>;
+}
+const { genres } = Astro.props;
+
+// Preferred demographic / broad genre slugs. Fallback to whatever the DB has if some are missing.
+const PREFERRED_ORDER = [
+  'shounen', 'seinen', 'shoujo', 'josei',
+  'boys_love', 'girls_love',
+  'romance', 'action', 'fantasy', 'sci_fi',
+  'horror', 'mystery', 'drama', 'slice_of_life',
+  'sports', 'supernatural', 'ecchi', 'smut',
+];
+const byKey = new Map(genres.map((g) => [g.genre.toLowerCase().replace(/[\s-]+/g, '_'), g]));
+const ordered = PREFERRED_ORDER
+  .map((k) => byKey.get(k))
+  .filter(Boolean) as Array<{ genre: string; count: number }>;
+const display = ordered.length > 0 ? ordered.slice(0, 12) : genres.slice(0, 12);
+---
+
+{display.length > 0 && (
+  <section class="animate-fade-in">
+    <div class="flex flex-wrap items-center justify-center gap-3">
+      {display.map((g) => (
+        <a
+          href={`/mangas?genre=${encodeURIComponent(g.genre)}`}
+          class="group inline-flex items-center gap-2 pl-3 pr-4 py-2 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-full hover:border-accent/60 hover:bg-zinc-900 transition-all shadow-xl cursor-pointer"
+        >
+          <span class="text-[10px] font-black text-white uppercase tracking-widest group-hover:text-accent transition-colors">
+            {formatGenre(g.genre)}
+          </span>
+          <span class="text-[10px] font-bold text-zinc-500 tabular-nums">{g.count}</span>
+        </a>
+      ))}
+    </div>
+  </section>
+)}

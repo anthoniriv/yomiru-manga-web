@@ -433,6 +433,29 @@ export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {
   });
 }
 
+export async function getGenresSummary(opts: ListOpts = {}) {
+  return timed('getGenresSummary', async () => {
+    const db = getPgDb();
+    const showAdult = opts.showAdult ?? false;
+    const result = await db.execute<{ genre: string; count: string }>(sql`
+      SELECT ${seriesGenres.genre} AS genre, count(DISTINCT ${series.id})::text AS count
+      FROM ${seriesGenres}
+      INNER JOIN ${series} ON ${series.id} = ${seriesGenres.seriesId}
+      WHERE ${showAdult ? sql`TRUE` : sql`${series.isAdult} = false`}
+        AND ${series.id} IN (SELECT DISTINCT ${chapters.seriesId} FROM ${chapters} WHERE ${chapters.downloadStatus} = 'completed')
+      GROUP BY ${seriesGenres.genre}
+      ORDER BY count(DISTINCT ${series.id}) DESC
+      LIMIT 40
+    `);
+    const rows = (result as unknown as { rows?: Array<{ genre: string; count: string }> }).rows
+      ?? (result as unknown as Array<{ genre: string; count: string }>);
+    return (Array.isArray(rows) ? rows : []).map((r) => ({
+      genre: r.genre,
+      count: Number(r.count),
+    }));
+  });
+}
+
 function normalizeSourceKey(name: string): string {
   return name
     .toLowerCase()

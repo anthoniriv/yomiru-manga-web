@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getPgDb, pgSchema } from '@yomiru/db';
 import { createSupabaseServer } from '../../../lib/supabase';
 import { getCoverUrl } from '../../../lib/db';
+import { getSafeRedirectPath } from '../../../lib/redirect';
 
 const { series } = pgSchema;
 
@@ -20,7 +21,7 @@ export const POST: APIRoute = async ({ request, cookies, params, redirect }) => 
 
   const form = await request.formData().catch(() => null);
   const action = String(form?.get('action') ?? 'toggle');
-  const redirectTo = String(form?.get('redirect') ?? `/manga/${slug}`);
+  const redirectTo = getSafeRedirectPath(form?.get('redirect'), `/manga/${slug}`);
 
   const db = getPgDb();
   const [row] = await db.select().from(series).where(eq(series.slug, slug)).limit(1);
@@ -56,5 +57,7 @@ export const POST: APIRoute = async ({ request, cookies, params, redirect }) => 
     }
   }
 
-  return redirect(redirectTo, 303);
+  const response = redirect(redirectTo, 303);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 };

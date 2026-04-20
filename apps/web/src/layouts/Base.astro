@@ -9,6 +9,12 @@ export interface Props {
 const { title, description = 'Yomiru — Lector de manga' } = Astro.props;
 const showAdult = readShowAdult(Astro.cookies);
 const currentPath = Astro.url.pathname + Astro.url.search;
+const quickGenreLinks = [
+  ['Shounen', 'Shounen'],
+  ['Seinen', 'Seinen'],
+  ['Shoujo', 'Shoujo'],
+  ['BL', 'Boys Love'],
+];
 
 let currentUser: { email: string | null } | null = null;
 try {
@@ -70,6 +76,38 @@ try {
       .yomiru-nav-bolt { filter: drop-shadow(0 0 14px rgba(233, 80, 0, 0.7)); }
       #yomiru-nav-loader.flex { display: flex; }
 
+      .inline-submit-loader {
+        position: relative;
+        overflow: hidden;
+      }
+      .inline-submit-loader::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+        border-radius: 999px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        opacity: 0;
+        pointer-events: none;
+      }
+      form.is-submitting .inline-submit-loader {
+        pointer-events: none;
+      }
+      form.is-submitting .inline-submit-loader > span {
+        opacity: 0;
+      }
+      form.is-submitting .inline-submit-loader::after {
+        opacity: 1;
+        animation: inline-spin 720ms linear infinite;
+      }
+      @keyframes inline-spin {
+        to { transform: rotate(360deg); }
+      }
+
       /* Outline text trick used by hero title */
       .text-outline-white {
         -webkit-text-stroke: 1.5px #fff;
@@ -118,6 +156,15 @@ try {
           const f = e.target;
           if (!(f instanceof HTMLFormElement)) return;
           if (f.method.toLowerCase() !== 'post') return;
+          if (f.hasAttribute('data-inline-submit')) {
+            f.classList.add('is-submitting');
+            const submit = f.querySelector('button[type="submit"]');
+            if (submit instanceof HTMLButtonElement) {
+              submit.disabled = true;
+              submit.setAttribute('aria-busy', 'true');
+            }
+            return;
+          }
           if (f.hasAttribute('data-no-loader')) return;
           show();
         });
@@ -137,21 +184,20 @@ try {
           </span>
         </a>
         <div class="flex items-center gap-3 md:gap-6">
+          <div class="hidden lg:flex items-center gap-4">
+            {quickGenreLinks.map(([label, genre]) => (
+              <a
+                href={`/mangas?genre=${encodeURIComponent(genre)}`}
+                class="text-sm font-bold text-zinc-400 hover:text-white transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
           <a href="/mangas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Catálogo</a>
           {currentUser && (
             <a href="/biblioteca" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Biblioteca</a>
           )}
-          <a href="/preguntas-respuestas" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Preguntas</a>
-          <a
-            href="/mangas"
-            aria-label="Buscar"
-            title="Buscar"
-            class="md:hidden w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:border-accent/50 transition-colors"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-            </svg>
-          </a>
           <div class="hidden md:block h-6 w-px bg-zinc-800"></div>
           <form method="POST" action="/api/nsfw" class="flex items-center" data-no-loader>
             <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />
@@ -194,9 +240,29 @@ try {
           )}
         </div>
       </nav>
+      <form action="/mangas" method="GET" class="md:hidden max-w-7xl mx-auto px-4 pt-3">
+        <label class="relative block">
+          <span class="sr-only">Buscar manga</span>
+          <svg
+            class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="search"
+            name="q"
+            placeholder="Buscar manga..."
+            class="w-full rounded-full border border-zinc-800 bg-zinc-900 px-11 py-2.5 text-sm font-medium text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+          />
+        </label>
+      </form>
     </header>
 
-    <main class="min-h-[70vh] pt-16">
+    <main class="min-h-[70vh] pt-32 md:pt-16">
       <slot />
     </main>
 

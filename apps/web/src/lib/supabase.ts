@@ -1,6 +1,14 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 
+function isResponseAlreadySentError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.name === 'ResponseSentError' ||
+    error.message.toLowerCase().includes('response has already been sent')
+  );
+}
+
 function env(): { url: string; anonKey: string } {
   const url =
     process.env.PUBLIC_SUPABASE_URL ??
@@ -29,7 +37,11 @@ export function createSupabaseServer(
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookies.set(name, value, { ...options, path: options?.path ?? '/' });
+          try {
+            cookies.set(name, value, { ...options, path: options?.path ?? '/' });
+          } catch (error) {
+            if (!isResponseAlreadySentError(error)) throw error;
+          }
         });
       },
     },

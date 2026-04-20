@@ -44,7 +44,7 @@ const {
       {moreHref && (
         <a
           href={moreHref}
-          class="inline-flex items-center gap-2 self-start md:self-auto text-[10px] font-black uppercase tracking-widest text-accent hover:text-white transition-colors"
+          class="hidden md:inline-flex items-center gap-2 self-start md:self-auto text-[10px] font-black uppercase tracking-widest text-accent hover:text-white transition-colors"
         >
           Ver más
           <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -124,6 +124,17 @@ const {
           })}
         </div>
       </div>
+      {moreHref && (
+        <a
+          href={moreHref}
+          class="mt-4 inline-flex md:hidden w-full items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-zinc-950 transition-colors"
+        >
+          Ver más
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      )}
     </div>
   </section>
 )}

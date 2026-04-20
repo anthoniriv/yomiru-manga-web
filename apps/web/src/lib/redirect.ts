@@ -11,3 +11,9 @@ export function getSafeRedirectPath(value: FormDataEntryValue | string | null | 
     return fallback;
   }
 }
+
+export function addSearchParam(path: string, key: string, value: string): string {
+  const url = new URL(getSafeRedirectPath(path), 'https://yomiru.local');
+  url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}${url.hash}`;
+}

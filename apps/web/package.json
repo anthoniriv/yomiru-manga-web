@@ -16,6 +16,8 @@
   "dependencies": {
     "@astrojs/react": "^4.2.0",
     "@astrojs/tailwind": "^5.1.0",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.3",
     "@yomiru/db": "*",
     "@yomiru/r2": "*",
     "astro": "^5.7.0",

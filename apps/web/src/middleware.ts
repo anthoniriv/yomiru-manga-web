@@ -46,10 +46,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const req = context.request;
   const url = new URL(req.url);
   const cookieHeader = req.headers.get('cookie') ?? '';
+  const isLoggedIn = /(?:^|;\s*)sb-[^=]+-auth-token=/.test(cookieHeader);
   const isCacheable =
     req.method === 'GET' &&
     CACHEABLE_PATHS.some((re) => re.test(url.pathname)) &&
-    !cookieHeader.includes('admin=');
+    !cookieHeader.includes('admin=') &&
+    !isLoggedIn;
 
   if (!isCacheable) {
     const res = await next();

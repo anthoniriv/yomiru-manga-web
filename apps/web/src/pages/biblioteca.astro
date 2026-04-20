@@ -1,0 +1,71 @@
+---
+import Base from '../layouts/Base.astro';
+import { createSupabaseServer } from '../lib/supabase';
+
+const sb = createSupabaseServer(Astro.request, Astro.cookies);
+const { data: { user } } = await sb.auth.getUser();
+
+if (!user) {
+  return Astro.redirect(`/login?redirect=${encodeURIComponent('/biblioteca')}`);
+}
+
+const { data: favs } = await sb.from('user_favorites')
+  .select('series_id, series_slug, series_title, cover_url, created_at')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false });
+
+const favorites = favs ?? [];
+---
+
+<Base title="Biblioteca">
+  <div class="max-w-[1600px] mx-auto px-4 md:px-8 pt-10 pb-12 space-y-6">
+    <section class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div class="space-y-2">
+        <p class="text-accent text-[10px] font-black uppercase tracking-[0.28em]">Mis favoritos</p>
+        <h1 class="text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none text-white">
+          Biblioteca
+        </h1>
+        <p class="text-sm text-zinc-500">
+          {favorites.length.toLocaleString()} {favorites.length === 1 ? 'manga guardado' : 'mangas guardados'}.
+        </p>
+      </div>
+    </section>
+
+    {favorites.length === 0 ? (
+      <div class="text-center py-24 text-zinc-500 border border-dashed border-white/10 rounded-2xl bg-ink-800/40">
+        <p class="text-5xl mb-4 text-accent">読</p>
+        <p class="text-lg text-zinc-300">Aún no has añadido ningún manga a favoritos.</p>
+        <a
+          href="/mangas"
+          class="inline-flex mt-6 rounded-full bg-accent text-zinc-950 px-6 py-2.5 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors"
+        >
+          Explorar catálogo
+        </a>
+      </div>
+    ) : (
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+        {favorites.map((f) => (
+          <a href={`/manga/${f.series_slug}`} class="group">
+            <div class="relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-lg group-hover:shadow-accent/20 group-hover:border-accent/30 transition-all duration-300">
+              <div class="aspect-[2/3] relative overflow-hidden rounded-t-2xl">
+                <img
+                  src={f.cover_url ?? '/placeholder-cover.svg'}
+                  alt={f.series_title ?? ''}
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 rounded-t-2xl"
+                  onerror="this.src='/placeholder-cover.svg'"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div class="absolute bottom-3 left-4 right-4">
+                  <h3 class="text-white font-black text-sm italic leading-tight tracking-tight line-clamp-2">
+                    {f.series_title}
+                  </h3>
+                </div>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</Base>

@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+
+const redirectTo = Astro.url.searchParams.get('redirect') ?? '/';
+const error = Astro.url.searchParams.get('error');
+const info = Astro.url.searchParams.get('info');
+---
+
+<Base title="Iniciar sesión">
+  <div class="max-w-md mx-auto px-4 pt-16 pb-20">
+    <div class="text-center mb-8">
+      <p class="text-accent text-[10px] font-black uppercase tracking-[0.28em]">Yomiru</p>
+      <h1 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white mt-2">
+        Entrar
+      </h1>
+    </div>
+
+    {error && (
+      <div class="mb-4 text-xs px-3 py-2 rounded-md bg-red-500/10 text-red-300 border border-red-500/20">
+        {error === 'invalid_credentials' && 'Email o contraseña incorrectos.'}
+        {error === 'email_not_confirmed' && 'Verifica tu email antes de entrar. Revisa la bandeja.'}
+        {error === 'unknown' && 'Error al iniciar sesión. Intenta de nuevo.'}
+      </div>
+    )}
+    {info === 'verify' && (
+      <div class="mb-4 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+        Cuenta creada. Revisa tu email y haz click en el link de verificación.
+      </div>
+    )}
+    {info === 'verified' && (
+      <div class="mb-4 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+        Email verificado. Inicia sesión.
+      </div>
+    )}
+
+    <form method="POST" action="/api/auth/login" class="space-y-4">
+      <input type="hidden" name="redirect" value={redirectTo} />
+      <label class="block">
+        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-1">Email</span>
+        <input
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-accent"
+        />
+      </label>
+      <label class="block">
+        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-1">Contraseña</span>
+        <input
+          type="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          minlength="6"
+          class="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-accent"
+        />
+      </label>
+      <button
+        type="submit"
+        class="w-full rounded-lg bg-accent px-5 py-3 text-xs font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors shadow-glow-accent"
+      >
+        Entrar
+      </button>
+    </form>
+
+    <div class="mt-6 text-center text-xs text-zinc-500">
+      ¿No tienes cuenta?
+      <a href={`/registro?redirect=${encodeURIComponent(redirectTo)}`} class="text-accent hover:text-white font-black uppercase tracking-widest ml-1">
+        Registrarse
+      </a>
+    </div>
+  </div>
+</Base>

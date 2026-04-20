@@ -5,6 +5,7 @@ import { getSeriesPageBundle, getCoverUrl } from '../../lib/db';
 import { formatGenre, formatStatus } from '../../lib/labels';
 import { readShowAdult } from '../../lib/nsfw';
 import { isAdmin } from '../../lib/admin';
+import { createSupabaseServer } from '../../lib/supabase';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
@@ -23,6 +24,24 @@ const latestChapter = chapters[chapters.length - 1] ?? null;
 const coverUrl = getCoverUrl(series);
 const enrichStatus = Astro.url.searchParams.get('enrich');
 const bannerStatus = Astro.url.searchParams.get('banner');
+
+let isFavorite = false;
+let isLoggedIn = false;
+try {
+  const sb = createSupabaseServer(Astro.request, Astro.cookies);
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    isLoggedIn = true;
+    const { data } = await sb.from('user_favorites')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .eq('series_id', series.id)
+      .maybeSingle();
+    isFavorite = !!data;
+  }
+} catch {
+  // supabase down — treat as logged out
+}
 
 let altTitles: string[] = [];
 try {
@@ -66,12 +85,29 @@ const statusKey = series.status?.toLowerCase() ?? '';
             />
           </div>
 
-          <button
-            type="button"
-            class="w-full max-w-[320px] mx-auto lg:mx-0 flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
-          >
-            ☆ Añadir a favoritos
-          </button>
+          {isLoggedIn ? (
+            <form method="POST" action={`/api/favorites/${slug}`} class="w-full max-w-[320px] mx-auto lg:mx-0">
+              <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+              <input type="hidden" name="action" value="toggle" />
+              <button
+                type="submit"
+                class={`w-full flex items-center justify-center gap-2 rounded-xl px-5 py-4 text-xs font-black uppercase tracking-[0.18em] transition-colors ${
+                  isFavorite
+                    ? 'bg-zinc-900 border border-accent/60 text-accent hover:border-accent'
+                    : 'bg-accent text-zinc-950 shadow-glow-accent hover:bg-white'
+                }`}
+              >
+                {isFavorite ? '★ En tu biblioteca' : '☆ Añadir a favoritos'}
+              </button>
+            </form>
+          ) : (
+            <a
+              href={`/login?redirect=${encodeURIComponent(`/manga/${slug}`)}`}
+              class="w-full max-w-[320px] mx-auto lg:mx-0 flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
+            >
+              ☆ Añadir a favoritos
+            </a>
+          )}
 
           <div class="max-w-[320px] mx-auto lg:mx-0 grid grid-cols-2 gap-3">
             {statusLabel && (

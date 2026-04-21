@@ -22,6 +22,7 @@
     "@yomiru/r2": "*",
     "astro": "^5.7.0",
     "better-sqlite3": "^11.9.1",
+    "lottie-web": "^5.13.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.17"

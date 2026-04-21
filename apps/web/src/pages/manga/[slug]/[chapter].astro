@@ -85,13 +85,11 @@ const nextUrl = nextChapter ? `/manga/${slug}/${nextChapter.number}` : null;
       aria-hidden="true"
       role="status"
     >
-      <img
-        src="/shinji-loader.gif"
-        alt=""
-        width="400"
-        height="400"
-        class="block rounded-2xl"
-      />
+      <div
+        id="yomiru-reader-loader-lottie"
+        class="h-36 w-36 sm:h-56 sm:w-56 lg:h-72 lg:w-72"
+        data-lottie-path="/gibliloading.json"
+      ></div>
     </div>
     <script is:inline>
       (function () {
@@ -116,6 +114,26 @@ const nextUrl = nextChapter ? `/manga/${slug}/${nextChapter.number}` : null;
         window.addEventListener('pageshow', hide);
         window.addEventListener('pagehide', hide);
       })();
+    </script>
+    <script>
+      import lottie from 'lottie-web';
+
+      function mountReaderLoader() {
+        const node = document.getElementById('yomiru-reader-loader-lottie');
+        if (!node || node.dataset.lottieMounted === '1') return;
+
+        lottie.loadAnimation({
+          container: node,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          path: node.dataset.lottiePath ?? '/gibliloading.json',
+        });
+        node.dataset.lottieMounted = '1';
+      }
+
+      mountReaderLoader();
+      document.addEventListener('astro:page-load', mountReaderLoader);
     </script>
 
     <!-- Top nav bar -->

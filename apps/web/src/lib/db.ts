@@ -9,6 +9,43 @@ export type Chapter = typeof chapters.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type ChapterWithPreview = Chapter & { previewUrl: string | null };
 
+interface PublicCacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+const PUBLIC_CACHE_TTLS = {
+  short: 60_000,
+  medium: 300_000,
+  long: 900_000,
+} as const;
+
+function getPublicCacheStore() {
+  const globalCache = globalThis as typeof globalThis & {
+    __YOMIRU_PUBLIC_QUERY_CACHE__?: Map<string, PublicCacheEntry<unknown>>;
+  };
+  if (!globalCache.__YOMIRU_PUBLIC_QUERY_CACHE__) {
+    globalCache.__YOMIRU_PUBLIC_QUERY_CACHE__ = new Map();
+  }
+  return globalCache.__YOMIRU_PUBLIC_QUERY_CACHE__;
+}
+
+async function cachedPublicQuery<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  const cache = getPublicCacheStore();
+  const now = Date.now();
+  const hit = cache.get(key);
+  if (hit && hit.expiresAt > now) {
+    return hit.value as T;
+  }
+
+  const value = await fn();
+  cache.set(key, {
+    value,
+    expiresAt: now + ttlMs,
+  });
+  return value;
+}
+
 function r2PublicUrl(): string {
   const globalEnv = (globalThis as { __ENV__?: Record<string, string> }).__ENV__;
   return process.env.R2_PUBLIC_URL ?? globalEnv?.R2_PUBLIC_URL ?? '';
@@ -111,7 +148,8 @@ function catalogWhere(opts: CatalogOpts = {}) {
 }
 
 export async function getCatalogSeries(page: number, perPage: number, opts: CatalogOpts = {}) {
-  return timed('getCatalogSeries', async () => {
+  const cacheKey = `catalog:${page}:${perPage}:${JSON.stringify(opts)}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => timed('getCatalogSeries', async () => {
     const db = getPgDb();
     const offset = (page - 1) * perPage;
     const where = catalogWhere(opts);
@@ -135,11 +173,12 @@ export async function getCatalogSeries(page: number, perPage: number, opts: Cata
     ]);
 
     return { series: rows, total: Number(totalRow[0]?.count ?? 0) };
-  });
+  }));
 }
 
 export async function getCatalogFilters(opts: ListOpts = {}) {
-  return timed('getCatalogFilters', async () => {
+  const cacheKey = `catalogFilters:${JSON.stringify(opts)}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.long, async () => timed('getCatalogFilters', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
     const adultFilter = showAdult ? undefined : eq(series.isAdult, false);
@@ -165,11 +204,12 @@ export async function getCatalogFilters(opts: ListOpts = {}) {
       genres: genreRows.map((r) => r.genre).filter(Boolean),
       years: yearRows.map((r) => r.year).filter((year): year is number => year != null),
     };
-  });
+  }));
 }
 
 export async function getTopSeries(limit: number, opts: ListOpts = {}) {
-  return timed('getTopSeries', async () => {
+  const cacheKey = `top:${limit}:${JSON.stringify(opts)}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => timed('getTopSeries', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
     return db
@@ -178,7 +218,7 @@ export async function getTopSeries(limit: number, opts: ListOpts = {}) {
       .where(availableAndAdultWhere(showAdult))
       .orderBy(desc(series.popularity), desc(series.rating))
       .limit(limit);
-  });
+  }));
 }
 
 // Colapsado a 1 query con drizzle select (mapeo camelCase automático).
@@ -308,7 +348,8 @@ export async function getSeriesBackdropUrl(seriesId: string): Promise<string | n
 }
 
 export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<string, string>> {
-  return timed('getSeriesBackdropMap', async () => {
+  const cacheKey = `backdrops:${seriesIds.slice().sort().join(',')}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => timed('getSeriesBackdropMap', async () => {
     const uniqueIds = [...new Set(seriesIds.filter(Boolean))];
     if (uniqueIds.length === 0) return new Map();
 
@@ -352,7 +393,7 @@ export async function getSeriesBackdropMap(seriesIds: string[]): Promise<Map<str
       if (url) map.set(r.series_id, url);
     }
     return map;
-  });
+  }));
 }
 
 export async function getChapterByNumber(
@@ -411,30 +452,45 @@ export async function getFeaturedSeries(limit: number, opts: ListOpts = {}) {
 
 // 1 query con drizzle select — mapeo camelCase automático, evita row mapping bug.
 export async function getRecentlyUpdatedSeries(limit: number, opts: ListOpts = {}): Promise<Series[]> {
-  return timed('getRecentlyUpdatedSeries', async () => {
+  const cacheKey = `recent:${limit}:${JSON.stringify(opts)}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => timed('getRecentlyUpdatedSeries', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
     const lim = Math.max(1, Math.floor(limit));
+    const lastChapterAt = sql<Date>`MAX(COALESCE(${chapters.downloadedAt}, ${chapters.createdAt}))`;
 
-    const rows = await db
-      .select(getTableColumns(series))
-      .from(series)
-      .innerJoin(chapters, eq(chapters.seriesId, series.id))
+    // Aggregate on the narrow chapter shape first, then fetch full series rows for
+    // only the top N ids. This avoids grouping on the full series payload.
+    const recentSeries = db
+      .select({
+        seriesId: chapters.seriesId,
+        lastChapterAt: lastChapterAt.as('last_chapter_at'),
+      })
+      .from(chapters)
+      .innerJoin(series, eq(chapters.seriesId, series.id))
       .where(
         and(
           eq(chapters.downloadStatus, 'completed'),
           showAdult ? undefined : eq(series.isAdult, false),
         ),
       )
-      .groupBy(series.id)
-      .orderBy(desc(sql`MAX(COALESCE(${chapters.downloadedAt}, ${chapters.createdAt}))`))
-      .limit(lim);
+      .groupBy(chapters.seriesId)
+      .orderBy(desc(lastChapterAt))
+      .limit(lim)
+      .as('recent_series');
+
+    const rows = await db
+      .select(getTableColumns(series))
+      .from(recentSeries)
+      .innerJoin(series, eq(series.id, recentSeries.seriesId))
+      .orderBy(desc(recentSeries.lastChapterAt));
     return rows as Series[];
-  });
+  }));
 }
 
 export async function getGenresSummary(opts: ListOpts = {}) {
-  return timed('getGenresSummary', async () => {
+  const cacheKey = `genres:${JSON.stringify(opts)}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.long, async () => timed('getGenresSummary', async () => {
     const db = getPgDb();
     const showAdult = opts.showAdult ?? false;
     const result = await db.execute<{ genre: string; count: string }>(sql`
@@ -453,7 +509,7 @@ export async function getGenresSummary(opts: ListOpts = {}) {
       genre: r.genre,
       count: Number(r.count),
     }));
-  });
+  }));
 }
 
 function normalizeSourceKey(name: string): string {
@@ -670,96 +726,125 @@ export async function getSeriesPageBundle(
   slug: string,
   onlyCompleted = true,
 ): Promise<SeriesPageBundle | null> {
-  const db = getPgDb();
+  const cacheKey = `seriesBundle:${slug}:${onlyCompleted ? 1 : 0}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => {
+    const db = getPgDb();
 
-  try {
-  const [seriesRow, chapterRows, genreRows, backdropRow] = await timed(
-    `getSeriesPageBundle(${slug})`,
-    async () =>
-      Promise.all([
-        db.select().from(series).where(eq(series.slug, slug)).limit(1),
-        db
-          .select({
-            id: chapters.id,
-            seriesId: chapters.seriesId,
-            number: chapters.number,
-            title: chapters.title,
-            volume: chapters.volume,
-            language: chapters.language,
-            pageCount: chapters.pageCount,
-            sourceUrl: chapters.sourceUrl,
-            sourceChapterId: chapters.sourceChapterId,
-            publishedAt: chapters.publishedAt,
-            downloadStatus: chapters.downloadStatus,
-            downloadError: chapters.downloadError,
-            downloadedAt: chapters.downloadedAt,
-            createdAt: chapters.createdAt,
-            previewPath: pages.storagePath,
-          })
-          .from(chapters)
-          .innerJoin(series, eq(series.id, chapters.seriesId))
-          .leftJoin(pages, and(
-        eq(pages.chapterId, chapters.id),
-        eq(pages.idx, sql`GREATEST(FLOOR(COALESCE(${chapters.pageCount}, 1) / 2), 0)::int`),
-      ))
-          .where(
-            onlyCompleted
-              ? and(eq(series.slug, slug), eq(chapters.downloadStatus, 'completed'))!
-              : eq(series.slug, slug),
-          )
-          .orderBy(asc(chapters.number)),
-        db
-          .select({ genre: seriesGenres.genre })
-          .from(seriesGenres)
-          .innerJoin(series, eq(series.id, seriesGenres.seriesId))
-          .where(eq(series.slug, slug)),
-        db
-          .select({
-            storagePath: pages.storagePath,
-            sourceUrl: pages.sourceUrl,
-          })
-          .from(chapters)
-          .innerJoin(series, eq(series.id, chapters.seriesId))
-          .innerJoin(pages, eq(pages.chapterId, chapters.id))
-          .where(
-            and(
-              eq(series.slug, slug),
-              eq(chapters.downloadStatus, 'completed'),
-              sql`${pages.storagePath} IS NOT NULL`,
-              sql`${pages.idx} > 0`,
-            ),
-          )
-          .orderBy(desc(chapters.number), asc(pages.idx))
-          .limit(1),
-      ]),
-  );
+    try {
+      const chapterWhere = onlyCompleted
+        ? and(eq(series.slug, slug), eq(chapters.downloadStatus, 'completed'))!
+        : eq(series.slug, slug);
+      const [seriesRow, chapterRows, genreRows, previewRowsResult, backdropRow] = await timed(
+        `getSeriesPageBundle(${slug})`,
+        async () =>
+          Promise.all([
+            db.select().from(series).where(eq(series.slug, slug)).limit(1),
+            db
+              .select({
+                id: chapters.id,
+                seriesId: chapters.seriesId,
+                number: chapters.number,
+                title: chapters.title,
+                volume: chapters.volume,
+                language: chapters.language,
+                pageCount: chapters.pageCount,
+                sourceUrl: chapters.sourceUrl,
+                sourceChapterId: chapters.sourceChapterId,
+                publishedAt: chapters.publishedAt,
+                downloadStatus: chapters.downloadStatus,
+                downloadError: chapters.downloadError,
+                downloadedAt: chapters.downloadedAt,
+                createdAt: chapters.createdAt,
+              })
+              .from(chapters)
+              .innerJoin(series, eq(series.id, chapters.seriesId))
+              .where(chapterWhere)
+              .orderBy(asc(chapters.number)),
+            db
+              .select({ genre: seriesGenres.genre })
+              .from(seriesGenres)
+              .innerJoin(series, eq(series.id, seriesGenres.seriesId))
+              .where(eq(series.slug, slug)),
+            db.execute<{ chapter_id: string; preview_path: string | null }>(sql`
+              WITH target_chapters AS (
+                SELECT
+                  ${chapters.id} AS chapter_id,
+                  GREATEST(FLOOR(COALESCE(${chapters.pageCount}, 1) / 2), 0)::int AS preview_idx
+                FROM ${chapters}
+                INNER JOIN ${series} ON ${series.id} = ${chapters.seriesId}
+                WHERE ${chapterWhere}
+              ),
+              ranked_pages AS (
+                SELECT
+                  target_chapters.chapter_id,
+                  ${pages.storagePath} AS preview_path,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY target_chapters.chapter_id
+                    ORDER BY ABS(${pages.idx} - target_chapters.preview_idx), ${pages.idx}
+                  ) AS rn
+                FROM target_chapters
+                INNER JOIN ${pages} ON ${pages.chapterId} = target_chapters.chapter_id
+                WHERE ${pages.storagePath} IS NOT NULL
+              )
+              SELECT chapter_id, preview_path
+              FROM ranked_pages
+              WHERE rn = 1
+            `),
+            db
+              .select({
+                storagePath: pages.storagePath,
+                sourceUrl: pages.sourceUrl,
+              })
+              .from(chapters)
+              .innerJoin(series, eq(series.id, chapters.seriesId))
+              .innerJoin(pages, eq(pages.chapterId, chapters.id))
+              .where(
+                and(
+                  eq(series.slug, slug),
+                  eq(chapters.downloadStatus, 'completed'),
+                  sql`${pages.storagePath} IS NOT NULL`,
+                  sql`${pages.idx} > 0`,
+                ),
+              )
+              .orderBy(desc(chapters.number), asc(pages.idx))
+              .limit(1),
+          ]),
+      );
 
-  const s = seriesRow[0];
-  if (!s) return null;
+      const s = seriesRow[0];
+      if (!s) return null;
+      const previewRows =
+        (previewRowsResult as unknown as { rows?: Array<{ chapter_id: string; preview_path: string | null }> }).rows
+        ?? (previewRowsResult as unknown as Array<{ chapter_id: string; preview_path: string | null }>);
+      const previewMap = new Map<string, string>();
+      for (const row of Array.isArray(previewRows) ? previewRows : []) {
+        if (row.preview_path) previewMap.set(row.chapter_id, row.preview_path);
+      }
 
-  const chaptersOut: ChapterWithPreview[] = chapterRows.map(({ previewPath, ...ch }) => ({
-    ...ch,
-    previewUrl: previewPath ? getStorageUrl(previewPath) : null,
-  }));
-  const backdrop = backdropRow[0];
-  const backgroundUrl = s.bannerPath
-    ? getStorageUrl(s.bannerPath)
-    : s.bannerSourceUrl
-      ? s.bannerSourceUrl
-      : backdrop?.storagePath
-        ? getStorageUrl(backdrop.storagePath)
-        : backdrop?.sourceUrl ?? null;
+      const chaptersOut: ChapterWithPreview[] = chapterRows.map((ch) => ({
+        ...ch,
+        previewUrl: previewMap.get(ch.id) ? getStorageUrl(previewMap.get(ch.id)!) : null,
+      }));
+      const backdrop = backdropRow[0];
+      const backgroundUrl = s.bannerPath
+        ? getStorageUrl(s.bannerPath)
+        : s.bannerSourceUrl
+          ? s.bannerSourceUrl
+          : backdrop?.storagePath
+            ? getStorageUrl(backdrop.storagePath)
+            : backdrop?.sourceUrl ?? null;
 
-  return {
-    series: s,
-    chapters: chaptersOut,
-    genres: genreRows.map((r) => r.genre).filter(Boolean),
-    backgroundUrl,
-  };
-  } catch (err) {
-    console.error(`[ERR] getSeriesPageBundle(${slug}) failed:`, err instanceof Error ? err.stack ?? err.message : err);
-    throw err;
-  }
+      return {
+        series: s,
+        chapters: chaptersOut,
+        genres: genreRows.map((r) => r.genre).filter(Boolean),
+        backgroundUrl,
+      };
+    } catch (err) {
+      console.error(`[ERR] getSeriesPageBundle(${slug}) failed:`, err instanceof Error ? err.stack ?? err.message : err);
+      throw err;
+    }
+  });
 }
 
 export interface ChapterPageBundle {
@@ -775,6 +860,8 @@ export async function getChapterPageBundle(
   slug: string,
   chapterNumber: number,
 ): Promise<ChapterPageBundle | null> {
+  const cacheKey = `chapterBundle:${slug}:${chapterNumber}`;
+  return cachedPublicQuery(cacheKey, PUBLIC_CACHE_TTLS.medium, async () => {
   const db = getPgDb();
 
   try {
@@ -839,4 +926,5 @@ export async function getChapterPageBundle(
     console.error(`[ERR] getChapterPageBundle(${slug},${chapterNumber}) failed:`, err instanceof Error ? err.stack ?? err.message : err);
     throw err;
   }
+  });
 }

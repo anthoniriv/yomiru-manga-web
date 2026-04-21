@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { recordRequestMetric } from './lib/perf';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -23,9 +24,9 @@ function getCacheVersion(): string {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const reqStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const logTotal = (label: string) => {
+  const logTotal = (label: string, status?: number) => {
     const endNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    console.log(`[PERF] total request time ${label}: ${Math.round(endNow - reqStart)}ms`);
+    recordRequestMetric(label, endNow - reqStart, status);
   };
 
   const runtimeEnv = (
@@ -55,14 +56,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (!isCacheable) {
     const res = await next();
-    logTotal(`${url.pathname} [no-cache]`);
+    logTotal(`${url.pathname} [no-cache]`, res.status);
     return res;
   }
 
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   if (!cache) {
     const res = await next();
-    logTotal(`${url.pathname} [no-cache-api]`);
+    logTotal(`${url.pathname} [no-cache-api]`, res.status);
     return res;
   }
 
@@ -102,7 +103,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const res = new Response(hit.body, hit);
     res.headers.set('x-cache', isStale ? 'STALE' : 'HIT');
     res.headers.set('age', String(Math.floor(ageSeconds)));
-    logTotal(`${url.pathname} [${isStale ? 'STALE' : 'HIT'}]`);
+    logTotal(`${url.pathname} [${isStale ? 'STALE' : 'HIT'}]`, res.status);
     return res;
   }
 
@@ -111,10 +112,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const cached = buildCacheable(response.clone());
     cached.headers.set('x-cache', 'MISS');
     execCtx?.waitUntil?.(cache.put(cacheKey, cached.clone()));
-    logTotal(`${url.pathname} [MISS]`);
+    logTotal(`${url.pathname} [MISS]`, cached.status);
     return cached;
   }
-  logTotal(`${url.pathname} [${response.status}]`);
+  logTotal(`${url.pathname} [${response.status}]`, response.status);
   return response;
 });
 

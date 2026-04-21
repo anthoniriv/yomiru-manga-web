@@ -9,6 +9,7 @@ import { readerRoutes } from './routes/reader.js';
 import { accountRoutes } from './routes/account.js';
 import { authPlugin } from './plugins/auth.js';
 import { supabasePlugin } from './plugins/supabase.js';
+import { recordBackendRequestMetric } from './utils/perf.js';
 
 const server = Fastify({
   logger: {
@@ -40,6 +41,11 @@ async function start() {
   await server.register(bookRoutes, { prefix: '/api' });
   await server.register(readerRoutes, { prefix: '/api' });
   await server.register(accountRoutes, { prefix: '/api' });
+
+  server.addHook('onResponse', async (request, reply) => {
+    const route = request.routeOptions.url || request.url;
+    recordBackendRequestMetric(`${request.method} ${route}`, reply.elapsedTime, reply.statusCode);
+  });
 
   // Start
   const port = parseInt(process.env.PORT || '3001', 10);

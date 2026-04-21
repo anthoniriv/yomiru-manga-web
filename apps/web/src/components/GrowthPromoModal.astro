@@ -1,11 +1,11 @@
 <div
   id="yomiru-growth-promo"
-  class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm"
+  class="fixed inset-0 z-[95] hidden overflow-y-auto bg-black/80 px-4 py-4 backdrop-blur-sm sm:items-center sm:justify-center sm:py-6"
   role="dialog"
   aria-modal="true"
   aria-labelledby="yomiru-growth-promo-title"
 >
-  <div class="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl shadow-black/80">
+  <div class="relative my-auto w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl shadow-black/80">
     <button
       id="yomiru-growth-promo-close"
       type="button"
@@ -17,8 +17,8 @@
       </svg>
     </button>
 
-    <div class="grid min-h-[560px] md:min-h-0 md:grid-cols-[1.05fr_0.95fr]">
-      <div class="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.35),_transparent_42%),linear-gradient(135deg,_#18181b_0%,_#0a0a0d_50%,_#111114_100%)] p-6 sm:p-8 md:p-10">
+    <div class="grid md:min-h-0 md:grid-cols-[1.05fr_0.95fr]">
+      <div class="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.35),_transparent_42%),linear-gradient(135deg,_#18181b_0%,_#0a0a0d_50%,_#111114_100%)] p-5 sm:p-8 md:p-10">
         <div class="absolute inset-0 opacity-70">
           <div class="absolute left-[-12%] top-[-10%] h-40 w-40 rounded-full bg-accent/25 blur-3xl"></div>
           <div class="absolute bottom-[-10%] right-[-8%] h-44 w-44 rounded-full bg-red-500/15 blur-3xl"></div>
@@ -26,31 +26,33 @@
           <div class="absolute bottom-10 left-12 h-16 w-28 -rotate-12 rounded-full border border-white/10 bg-white/5"></div>
         </div>
 
-        <div class="relative flex h-full flex-col justify-between gap-8">
-          <div class="space-y-4">
+        <div class="relative flex h-full flex-col justify-between gap-6 sm:gap-8">
+          <div class="space-y-3 sm:space-y-4">
             <span class="inline-flex rounded-full border border-accent/30 bg-accent/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-accent">
               Comunidad Yomiru
             </span>
 
-            <div class="space-y-3">
-              <p class="max-w-xs text-balance text-3xl font-black italic uppercase leading-none tracking-tight text-white sm:text-4xl md:text-5xl">
+            <div class="space-y-2 sm:space-y-3">
+              <p class="max-w-xs text-balance text-2xl font-black italic uppercase leading-none tracking-tight text-white sm:text-4xl md:text-5xl">
                 Ayudanos a seguir creciendo la libreria
               </p>
-              <p class="max-w-md text-sm leading-7 text-zinc-300 sm:text-base">
+              <p class="max-w-md text-sm leading-6 text-zinc-300 sm:text-base sm:leading-7">
                 Si deseas un manga nuevo o realizas scans, queremos escucharte. Cada aporte nos ayuda a
                 ampliar el catalogo y mejorar la biblioteca para todos.
               </p>
             </div>
           </div>
 
-          <div class="relative rounded-[24px] border border-white/10 bg-black/30 p-5 shadow-xl shadow-black/30">
+          <div class="relative rounded-[24px] border border-white/10 bg-black/30 p-4 shadow-xl shadow-black/30 sm:p-5">
             <div class="mb-4 flex items-center gap-3">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-2xl font-black text-zinc-950 shadow-lg shadow-accent/30">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl font-black text-zinc-950 shadow-lg shadow-accent/30 sm:h-12 sm:w-12 sm:text-2xl">
                 読
               </div>
-              <div>
+              <div class="min-w-0">
                 <p class="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Impulsa el proyecto</p>
-                <p class="text-sm font-bold text-white">Nuevos mangas, scans y reportes</p>
+                <p class="text-xl font-bold leading-tight text-white sm:text-sm">
+                  Nuevos mangas, scans y reportes
+                </p>
               </div>
             </div>
 
@@ -78,14 +80,14 @@
         </div>
       </div>
 
-      <div class="flex flex-col justify-center bg-zinc-950 p-6 sm:p-8 md:p-10">
+      <div class="flex flex-col justify-center bg-zinc-950 p-5 sm:p-8 md:p-10">
         <div class="space-y-6">
           <div>
             <p class="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Haz crecer Yomiru</p>
-            <h2 id="yomiru-growth-promo-title" class="mt-3 text-3xl font-black uppercase leading-none tracking-tight text-white sm:text-4xl">
+            <h2 id="yomiru-growth-promo-title" class="mt-3 text-[2rem] font-black uppercase leading-none tracking-tight text-white sm:text-4xl">
               Contactanos aqui
             </h2>
-            <p class="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">
+            <p class="mt-4 text-sm leading-6 text-zinc-400 sm:text-base sm:leading-7">
               Escríbenos si quieres pedir una serie, reportar una fuente o sumarte con scans. El mensaje
               llega directo al equipo para revisarlo cuanto antes.
             </p>

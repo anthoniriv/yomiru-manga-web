@@ -1,6 +1,7 @@
 ---
 import { readShowAdult } from '../lib/nsfw';
 import { getUser } from '../lib/supabase';
+import GrowthPromoModal from '../components/GrowthPromoModal.astro';
 import StickyMobileAd from '../components/StickyMobileAd.astro';
 
 export interface Props {
@@ -13,6 +14,9 @@ const currentPath = Astro.url.pathname + Astro.url.search;
 const hideStickyAd =
   /^\/manga\/[^/]+\/[^/]+$/.test(Astro.url.pathname) ||
   ['/login', '/registro', '/recuperar', '/restablecer'].includes(Astro.url.pathname);
+const hideGrowthPromo =
+  /^\/manga\/[^/]+\/[^/]+$/.test(Astro.url.pathname) ||
+  ['/login', '/registro', '/recuperar', '/restablecer', '/contacto'].includes(Astro.url.pathname);
 const quickGenreLinks = [
   ['Shounen', 'Shounen'],
   ['Seinen', 'Seinen'],
@@ -337,6 +341,7 @@ try {
       </div>
     </footer>
 
+    {!hideGrowthPromo && <GrowthPromoModal />}
     {!hideStickyAd && <StickyMobileAd />}
   </body>
 </html>

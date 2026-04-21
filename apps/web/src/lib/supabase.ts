@@ -25,8 +25,10 @@ function env(): { url: string; anonKey: string } {
 export function createSupabaseServer(
   request: Request,
   cookies: AstroCookies,
+  options: { persistCookies?: boolean } = {},
 ) {
   const { url, anonKey } = env();
+  const persistCookies = options.persistCookies ?? true;
   return createServerClient(url, anonKey, {
     cookies: {
       getAll() {
@@ -36,6 +38,7 @@ export function createSupabaseServer(
         }));
       },
       setAll(cookiesToSet) {
+        if (!persistCookies) return;
         cookiesToSet.forEach(({ name, value, options }) => {
           try {
             cookies.set(name, value, { ...options, path: options?.path ?? '/' });
@@ -49,7 +52,7 @@ export function createSupabaseServer(
 }
 
 export async function getUser(request: Request, cookies: AstroCookies) {
-  const sb = createSupabaseServer(request, cookies);
+  const sb = createSupabaseServer(request, cookies, { persistCookies: false });
   const { data: { user } } = await sb.auth.getUser();
   return { supabase: sb, user };
 }

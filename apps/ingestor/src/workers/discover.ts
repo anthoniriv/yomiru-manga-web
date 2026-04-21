@@ -55,6 +55,9 @@ export function startDiscoverWorker(): Worker<DiscoverJob> {
         totalChapters: result.chapters.length,
         sourceName,
         sourceUrl: url,
+        watchUpdates: job.data.watchUpdates,
+        autoDownload: job.data.autoDownload,
+        checkIntervalMinutes: job.data.checkIntervalMinutes,
       });
 
       console.log(
@@ -82,15 +85,18 @@ export function startDiscoverWorker(): Worker<DiscoverJob> {
         }
       }
 
-      const queue = chapterQueue();
-      for (const id of newChapterIds) {
-        await queue.add('download', { chapterId: id }, { jobId: `ch-${id}` });
+      if (seriesRow.autoDownload) {
+        const queue = chapterQueue();
+        for (const id of newChapterIds) {
+          await queue.add('download', { chapterId: id }, { jobId: `ch-${id}` });
+        }
       }
 
       return {
         seriesId: seriesRow.id,
         chaptersTotal: result.chapters.length,
         chaptersQueued: newChapterIds.length,
+        autoDownload: seriesRow.autoDownload,
       };
     },
     {

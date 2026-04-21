@@ -42,6 +42,10 @@ export const series = mangaSchema.table(
     sourceName: text('source_name').notNull(),
     sourceUrl: text('source_url').notNull(),
     sourceId: text('source_id'),
+    watchUpdates: boolean('watch_updates').notNull().default(false),
+    autoDownload: boolean('auto_download').notNull().default(false),
+    checkIntervalMinutes: integer('check_interval_minutes').notNull().default(30),
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -55,6 +59,7 @@ export const series = mangaSchema.table(
     ),
     kindIdx: index('series_kind_idx').on(t.kind),
     isAdultIdx: index('series_is_adult_idx').on(t.isAdult),
+    watchUpdatesIdx: index('series_watch_updates_idx').on(t.watchUpdates),
   }),
 );
 

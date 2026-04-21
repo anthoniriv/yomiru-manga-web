@@ -1,0 +1,42 @@
+---
+export interface Props {
+  label?: string;
+  class?: string;
+}
+
+const { label = 'Publicidad', class: className = '' } = Astro.props;
+---
+
+<aside class={`w-full ${className}`} aria-label={label}>
+  <div class="mx-auto flex max-w-[760px] flex-col items-center gap-2">
+    <span class="text-[9px] font-black uppercase tracking-[0.24em] text-zinc-600">
+      {label}
+    </span>
+
+    <div class="hidden min-h-[90px] w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 md:flex">
+      <script is:inline>
+        atOptions = {
+          'key': '2c77dc8513e420e9c0f8b38fe90d8f3e',
+          'format': 'iframe',
+          'height': 90,
+          'width': 728,
+          'params': {}
+        };
+      </script>
+      <script is:inline src="https://www.highperformanceformat.com/2c77dc8513e420e9c0f8b38fe90d8f3e/invoke.js"></script>
+    </div>
+
+    <div class="flex min-h-[50px] w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 md:hidden">
+      <script is:inline>
+        atOptions = {
+          'key': '2e4eabc2bba468ce037fe4e7d731f06c',
+          'format': 'iframe',
+          'height': 50,
+          'width': 320,
+          'params': {}
+        };
+      </script>
+      <script is:inline src="https://www.highperformanceformat.com/2e4eabc2bba468ce037fe4e7d731f06c/invoke.js"></script>
+    </div>
+  </div>
+</aside>

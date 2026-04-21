@@ -1,11 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
+import AdBanner from '../../components/AdBanner.astro';
 import ChapterList from '../../components/ChapterList.tsx';
 import { getSeriesPageBundle, getCoverUrl } from '../../lib/db';
 import { formatGenre, formatStatus } from '../../lib/labels';
 import { readShowAdult } from '../../lib/nsfw';
 import { isAdmin } from '../../lib/admin';
-import { createSupabaseServer } from '../../lib/supabase';
+import { getUser, createSupabaseServer } from '../../lib/supabase';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
@@ -26,6 +27,7 @@ const enrichStatus = Astro.url.searchParams.get('enrich');
 const bannerStatus = Astro.url.searchParams.get('banner');
 const commentStatus = Astro.url.searchParams.get('comment');
 const ratingStatus = Astro.url.searchParams.get('rating');
+const monitorStatus = Astro.url.searchParams.get('monitor');
 
 let isFavorite = false;
 let isLoggedIn = false;
@@ -41,8 +43,7 @@ let comments: Array<{
   user_id: string;
 }> = [];
 try {
-  const sb = createSupabaseServer(Astro.request, Astro.cookies);
-  const { data: { user } } = await sb.auth.getUser();
+  const { supabase: sb, user } = await getUser(Astro.request, Astro.cookies);
   if (user) {
     isLoggedIn = true;
     currentUserEmail = user.email ?? null;
@@ -110,8 +111,8 @@ const statusKey = series.status?.toLowerCase() ?? '';
       <div class="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/55 to-zinc-950/15" />
     </div>
 
-    <section class="relative max-w-[1440px] mx-auto px-4 md:px-8 pt-8 md:pt-28 pb-16">
-      <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12 items-center">
+    <section class="relative max-w-[1440px] mx-auto px-4 md:px-8 pt-8 md:pt-28 pb-20">
+      <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12 items-start">
         <aside class="space-y-6">
           <div class="w-56 sm:w-64 lg:w-full max-w-[320px] mx-auto lg:mx-0 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl shadow-black/70">
             <img
@@ -240,7 +241,7 @@ const statusKey = series.status?.toLowerCase() ?? '';
           </div>
         </aside>
 
-        <div class="min-w-0 pb-2">
+        <div class="min-w-0 pb-2 space-y-10 md:space-y-12">
           <div class="flex flex-wrap items-center gap-2 mb-4">
             {series.sourceName && (
               <span class="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
@@ -312,25 +313,86 @@ const statusKey = series.status?.toLowerCase() ?? '';
           )}
 
           {admin && (
-            <div class="mt-6 flex flex-wrap items-center gap-2 border-t border-zinc-800/60 pt-4">
-              <span class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Admin</span>
-              <form method="POST" action={`/api/series/${slug}/banner`}>
+            <div class="mt-6 space-y-4 border-t border-zinc-800/60 pt-4">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Admin</span>
+                <form method="POST" action={`/api/series/${slug}/banner`}>
+                  <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                  <button
+                    type="submit"
+                    class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-accent/50 hover:text-accent transition-colors"
+                  >
+                    Sync banner (AniList)
+                  </button>
+                </form>
+                <form method="POST" action={`/api/series/${slug}/enrich?force=true`}>
+                  <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                  <button
+                    type="submit"
+                    class="rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-zinc-950 transition-colors"
+                  >
+                    Re-sync MAL (force)
+                  </button>
+                </form>
+                <form method="POST" action={`/api/admin/series/${slug}/sync`}>
+                  <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                  <input type="hidden" name="action" value="sync" />
+                  <button
+                    type="submit"
+                    class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500 hover:text-zinc-950 transition-colors"
+                  >
+                    Sync now
+                  </button>
+                </form>
+              </div>
+
+              <form method="POST" action={`/api/admin/series/${slug}/monitor`} class="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
                 <input type="hidden" name="redirect" value={`/manga/${slug}`} />
-                <button
-                  type="submit"
-                  class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-accent/50 hover:text-accent transition-colors"
-                >
-                  Sync banner (AniList)
-                </button>
-              </form>
-              <form method="POST" action={`/api/series/${slug}/enrich?force=true`}>
-                <input type="hidden" name="redirect" value={`/manga/${slug}`} />
-                <button
-                  type="submit"
-                  class="rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-zinc-950 transition-colors"
-                >
-                  Re-sync MAL (force)
-                </button>
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Monitoreo local</p>
+                    <p class="mt-1 text-xs text-zinc-500">
+                      Marca esta serie para que el worker local la revise y suba nuevos caps a R2.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    class="rounded-lg bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-950 hover:bg-accent transition-colors"
+                  >
+                    Guardar settings
+                  </button>
+                </div>
+
+                <div class="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_180px]">
+                  <label class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                    <span class="text-xs font-bold text-zinc-200">Vigilar actualizaciones</span>
+                    <input type="checkbox" name="watch_updates" value="1" checked={series.watchUpdates} class="h-4 w-4 accent-accent" />
+                  </label>
+                  <label class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                    <span class="text-xs font-bold text-zinc-200">Auto-descargar</span>
+                    <input type="checkbox" name="auto_download" value="1" checked={series.autoDownload} class="h-4 w-4 accent-accent" />
+                  </label>
+                  <label class="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-xs font-bold text-zinc-200">
+                    Intervalo
+                    <select
+                      name="check_interval_minutes"
+                      class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-bold text-white outline-none focus:border-accent/60"
+                    >
+                      {[5, 10, 15, 30, 60, 120].map((minutes) => (
+                        <option value={minutes} selected={series.checkIntervalMinutes === minutes}>
+                          Cada {minutes} min
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  <span>Watch: {series.watchUpdates ? 'on' : 'off'}</span>
+                  <span>Auto: {series.autoDownload ? 'on' : 'off'}</span>
+                  <span>Último check: {series.lastCheckedAt ? new Date(series.lastCheckedAt).toLocaleString('es-PE') : '—'}</span>
+                  <span>Último sync: {series.lastSyncedAt ? new Date(series.lastSyncedAt).toLocaleString('es-PE') : '—'}</span>
+                </div>
               </form>
             </div>
           )}
@@ -349,127 +411,133 @@ const statusKey = series.status?.toLowerCase() ?? '';
               Error descargando el banner.
             </div>
           )}
+          {monitorStatus === 'ok' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              Monitoreo actualizado.
+            </div>
+          )}
+          {monitorStatus === 'queued' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              Trabajo encolado en el motor local.
+            </div>
+          )}
+          {monitorStatus === 'queue_error' && (
+            <div class="mt-3 text-xs px-3 py-2 rounded-md bg-red-500/10 text-red-300 border border-red-500/20">
+              No pudimos hablar con Redis/BullMQ del motor local.
+            </div>
+          )}
+          <div>
+            <div class="flex items-end justify-between gap-4 mb-6">
+              <div>
+                <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
+                  Capítulos
+                  <span class="align-middle text-sm font-black not-italic tracking-[0.16em] text-zinc-600">
+                    {chapters.length} disponibles
+                  </span>
+                </h2>
+              </div>
+            </div>
+
+            <ChapterList
+              client:load
+              slug={slug}
+              chapters={chapters.map((ch) => ({
+                number: ch.number,
+                title: ch.title,
+                language: ch.language,
+                pageCount: ch.pageCount,
+                previewUrl: ch.previewUrl,
+                publishedAt: ch.publishedAt?.toISOString() ?? null,
+                downloadedAt: ch.downloadedAt?.toISOString() ?? null,
+              }))}
+            />
+          </div>
+
+          <AdBanner />
+
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 md:p-6">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mb-6">
+              <div>
+                <p class="text-accent text-[10px] font-black uppercase tracking-[0.24em]">Comunidad</p>
+                <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
+                  Comentarios
+                </h2>
+              </div>
+              <p class="text-sm text-zinc-500">{comments.length} recientes</p>
+            </div>
+
+            {commentStatus === 'ok' && (
+              <div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                Comentario publicado.
+              </div>
+            )}
+            {commentStatus === 'invalid' && (
+              <div class="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                Escribe entre 1 y 800 caracteres.
+              </div>
+            )}
+            {commentStatus === 'error' && (
+              <div class="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                No pudimos publicar tu comentario.
+              </div>
+            )}
+
+            {isLoggedIn ? (
+              <form method="POST" action={`/api/series/${slug}/comment`} class="space-y-3" data-inline-submit data-no-loader>
+                <input type="hidden" name="redirect" value={`/manga/${slug}`} />
+                <label class="block">
+                  <span class="sr-only">Comentario</span>
+                  <textarea
+                    name="body"
+                    required
+                    maxlength="800"
+                    rows="4"
+                    placeholder={`Comenta como ${currentUserEmail ?? 'lector'}...`}
+                    class="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                  ></textarea>
+                </label>
+                <button
+                  type="submit"
+                  class="inline-submit-loader inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
+                >
+                  <span>Publicar comentario</span>
+                </button>
+              </form>
+            ) : (
+              <div class="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 p-4 text-sm text-zinc-400">
+                <p>Necesitas una cuenta para comentar y votar.</p>
+                <a
+                  href={`/login?redirect=${encodeURIComponent(`/manga/${slug}`)}`}
+                  data-no-loader
+                  class="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors"
+                >
+                  Iniciar sesión
+                </a>
+              </div>
+            )}
+
+            <div class="mt-8 space-y-4">
+              {comments.length === 0 ? (
+                <div class="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-sm text-zinc-500">
+                  Todavía no hay comentarios. Sé el primero en romper el hielo.
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <article class="rounded-xl border border-zinc-800 bg-zinc-900/55 p-4">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                      <p class="text-sm font-black text-white">{comment.author_name ?? 'Lector'}</p>
+                      <time class="text-[10px] font-bold uppercase tracking-widest text-zinc-600" datetime={comment.created_at}>
+                        {new Date(comment.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </time>
+                    </div>
+                    <p class="whitespace-pre-line text-sm leading-6 text-zinc-300">{comment.body}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </section>
   </div>
-
-  <section class="max-w-[1440px] mx-auto px-4 md:px-8 pb-16">
-    <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12">
-      <div class="hidden lg:block"></div>
-      <div>
-        <div class="flex items-end justify-between gap-4 mb-6">
-          <div>
-            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
-              Capítulos
-              <span class="align-middle text-sm font-black not-italic tracking-[0.16em] text-zinc-600">
-                {chapters.length} disponibles
-              </span>
-            </h2>
-          </div>
-        </div>
-
-        <ChapterList
-          client:load
-          slug={slug}
-          chapters={chapters.map((ch) => ({
-            number: ch.number,
-            title: ch.title,
-            language: ch.language,
-            pageCount: ch.pageCount,
-            previewUrl: ch.previewUrl,
-            publishedAt: ch.publishedAt?.toISOString() ?? null,
-            downloadedAt: ch.downloadedAt?.toISOString() ?? null,
-          }))}
-        />
-      </div>
-    </div>
-  </section>
-
-  <section class="max-w-[1440px] mx-auto px-4 md:px-8 pb-20">
-    <div class="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12">
-      <div class="hidden lg:block"></div>
-      <div class="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 md:p-6">
-        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mb-6">
-          <div>
-            <p class="text-accent text-[10px] font-black uppercase tracking-[0.24em]">Comunidad</p>
-            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">
-              Comentarios
-            </h2>
-          </div>
-          <p class="text-sm text-zinc-500">{comments.length} recientes</p>
-        </div>
-
-        {commentStatus === 'ok' && (
-          <div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-            Comentario publicado.
-          </div>
-        )}
-        {commentStatus === 'invalid' && (
-          <div class="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-            Escribe entre 1 y 800 caracteres.
-          </div>
-        )}
-        {commentStatus === 'error' && (
-          <div class="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-            No pudimos publicar tu comentario.
-          </div>
-        )}
-
-        {isLoggedIn ? (
-          <form method="POST" action={`/api/series/${slug}/comment`} class="space-y-3" data-inline-submit data-no-loader>
-            <input type="hidden" name="redirect" value={`/manga/${slug}`} />
-            <label class="block">
-              <span class="sr-only">Comentario</span>
-              <textarea
-                name="body"
-                required
-                maxlength="800"
-                rows="4"
-                placeholder={`Comenta como ${currentUserEmail ?? 'lector'}...`}
-                class="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
-              ></textarea>
-            </label>
-            <button
-              type="submit"
-              class="inline-submit-loader inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
-            >
-              <span>Publicar comentario</span>
-            </button>
-          </form>
-        ) : (
-          <div class="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 p-4 text-sm text-zinc-400">
-            <p>Necesitas una cuenta para comentar y votar.</p>
-            <a
-              href={`/login?redirect=${encodeURIComponent(`/manga/${slug}`)}`}
-              data-no-loader
-              class="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors"
-            >
-              Iniciar sesión
-            </a>
-          </div>
-        )}
-
-        <div class="mt-8 space-y-4">
-          {comments.length === 0 ? (
-            <div class="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-sm text-zinc-500">
-              Todavía no hay comentarios. Sé el primero en romper el hielo.
-            </div>
-          ) : (
-            comments.map((comment) => (
-              <article class="rounded-xl border border-zinc-800 bg-zinc-900/55 p-4">
-                <div class="flex items-center justify-between gap-3 mb-2">
-                  <p class="text-sm font-black text-white">{comment.author_name ?? 'Lector'}</p>
-                  <time class="text-[10px] font-bold uppercase tracking-widest text-zinc-600" datetime={comment.created_at}>
-                    {new Date(comment.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </time>
-                </div>
-                <p class="whitespace-pre-line text-sm leading-6 text-zinc-300">{comment.body}</p>
-              </article>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  </section>
 </Base>

@@ -55,6 +55,10 @@ export async function upsertSeries(input: NewSeries): Promise<Series> {
         author: input.author ?? existing.author,
         artist: input.artist ?? existing.artist,
         altTitles: input.altTitles ?? existing.altTitles,
+        watchUpdates: input.watchUpdates ?? existing.watchUpdates,
+        autoDownload: input.autoDownload ?? existing.autoDownload,
+        checkIntervalMinutes: input.checkIntervalMinutes ?? existing.checkIntervalMinutes,
+        lastCheckedAt: input.lastCheckedAt ?? existing.lastCheckedAt,
         lastSyncedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -69,6 +73,28 @@ export async function upsertSeries(input: NewSeries): Promise<Series> {
 export async function findSeriesById(id: string): Promise<Series | undefined> {
   const rows = await getPgDb().select().from(series).where(eq(series.id, id)).limit(1);
   return rows[0];
+}
+
+export async function listWatchedSeriesDue(limit: number): Promise<Series[]> {
+  return getPgDb()
+    .select()
+    .from(series)
+    .where(
+      and(
+        eq(series.watchUpdates, true),
+        eq(series.status, 'ongoing'),
+        sql`coalesce(${series.lastCheckedAt}, ${series.lastSyncedAt}, ${series.createdAt}) + (${series.checkIntervalMinutes} * interval '1 minute') <= now()`,
+      ),
+    )
+    .orderBy(sql`${series.lastCheckedAt} asc nulls first`, sql`${series.popularity} desc`)
+    .limit(limit);
+}
+
+export async function markSeriesChecked(seriesId: string): Promise<void> {
+  await getPgDb()
+    .update(series)
+    .set({ lastCheckedAt: new Date(), updatedAt: new Date() })
+    .where(eq(series.id, seriesId));
 }
 
 export async function upsertChapter(input: NewChapter): Promise<Chapter> {

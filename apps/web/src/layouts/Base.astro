@@ -1,6 +1,7 @@
 ---
 import { readShowAdult } from '../lib/nsfw';
-import { createSupabaseServer } from '../lib/supabase';
+import { getUser } from '../lib/supabase';
+import StickyMobileAd from '../components/StickyMobileAd.astro';
 
 export interface Props {
   title: string;
@@ -9,6 +10,9 @@ export interface Props {
 const { title, description = 'Yomiru — Lector de manga' } = Astro.props;
 const showAdult = readShowAdult(Astro.cookies);
 const currentPath = Astro.url.pathname + Astro.url.search;
+const hideStickyAd =
+  /^\/manga\/[^/]+\/[^/]+$/.test(Astro.url.pathname) ||
+  ['/login', '/registro', '/recuperar', '/restablecer'].includes(Astro.url.pathname);
 const quickGenreLinks = [
   ['Shounen', 'Shounen'],
   ['Seinen', 'Seinen'],
@@ -18,9 +22,8 @@ const quickGenreLinks = [
 
 let currentUser: { email: string | null } | null = null;
 try {
-  const sb = createSupabaseServer(Astro.request, Astro.cookies);
-  const { data } = await sb.auth.getUser();
-  if (data.user) currentUser = { email: data.user.email ?? null };
+  const { user } = await getUser(Astro.request, Astro.cookies);
+  if (user) currentUser = { email: user.email ?? null };
 } catch {
   // supabase env vars missing in some envs — ignore
 }
@@ -278,7 +281,7 @@ try {
         <p class="flex-1 text-[11px] sm:text-xs leading-relaxed text-zinc-300">
           <span class="font-black uppercase tracking-widest text-white block sm:inline">Aviso · Disclaimer.</span>
           <span class="block sm:inline sm:ml-1">
-            Yomiru es un proyecto sin fines de lucro. Todo el contenido pertenece a sus autores, traductores y scanlations originales; lo redistribuimos con fines informativos y de preservación. Si eres autor o scan y deseas retirar tu obra, contáctanos.
+            Todo el contenido pertenece a sus autores, traductores y scanlations originales; lo redistribuimos con fines informativos y de preservación. Si eres autor o scan y deseas retirar tu obra, contáctanos.
           </span>
         </p>
         <button
@@ -325,12 +328,14 @@ try {
           </div>
         </div>
         <p class="mx-auto max-w-3xl border-t border-zinc-900 pt-6 text-center text-[10px] font-bold uppercase tracking-[0.16em] leading-relaxed text-zinc-600">
-          Disclaimer: Yomiru es un proyecto sin fines de lucro. Todo el contenido pertenece a sus respectivos autores, traductores y scanlations. Redistribución informativa; si eres autor o scan y quieres retirar tu obra, escríbenos.
+          Disclaimer: Todo el contenido pertenece a sus respectivos autores, traductores y scanlations. Redistribución informativa; si eres autor o scan y quieres retirar tu obra, escríbenos.
         </p>
         <div class="pt-5 text-center text-zinc-700 text-[10px] uppercase tracking-widest">
           © 2026 Yomiru
         </div>
       </div>
     </footer>
+
+    {!hideStickyAd && <StickyMobileAd />}
   </body>
 </html>

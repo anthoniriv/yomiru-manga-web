@@ -10,6 +10,9 @@ export interface DiscoverJob {
   url: string;
   kind: 'manga' | 'book';
   forceResync?: boolean;
+  watchUpdates?: boolean;
+  autoDownload?: boolean;
+  checkIntervalMinutes?: number;
 }
 
 export interface ChapterJob {

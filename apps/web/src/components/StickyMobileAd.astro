@@ -1,0 +1,109 @@
+<div id="yomiru-sticky-ad" class="fixed inset-x-0 bottom-0 z-[70] px-3 pb-3" hidden>
+  <style is:global>
+    body.has-sticky-mobile-ad {
+      padding-bottom: 132px;
+    }
+
+    @media (max-width: 767px) {
+      body.has-sticky-mobile-ad {
+        padding-bottom: 92px;
+      }
+    }
+  </style>
+
+  <div class="mx-auto flex max-w-[760px] flex-col items-center gap-1.5">
+    <button
+      id="yomiru-sticky-ad-toggle"
+      type="button"
+      class="inline-flex h-9 min-w-14 items-center justify-center rounded-t-xl border border-zinc-800 border-b-0 bg-zinc-950/96 px-4 text-zinc-300 shadow-xl shadow-black/40 backdrop-blur"
+      aria-label="Ocultar publicidad"
+      aria-expanded="true"
+    >
+      <svg class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+
+    <aside
+      id="yomiru-sticky-ad-body"
+      class="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60"
+      aria-label="Publicidad fija"
+    >
+      <div class="hidden min-h-[90px] w-[728px] max-w-full items-center justify-center md:flex">
+        <script is:inline>
+          atOptions = {
+            'key': '2c77dc8513e420e9c0f8b38fe90d8f3e',
+            'format': 'iframe',
+            'height': 90,
+            'width': 728,
+            'params': {}
+          };
+        </script>
+        <script is:inline src="https://www.highperformanceformat.com/2c77dc8513e420e9c0f8b38fe90d8f3e/invoke.js"></script>
+      </div>
+
+      <div class="flex min-h-[50px] w-[320px] max-w-full items-center justify-center md:hidden">
+        <script is:inline>
+          atOptions = {
+            'key': '2e4eabc2bba468ce037fe4e7d731f06c',
+            'format': 'iframe',
+            'height': 50,
+            'width': 320,
+            'params': {}
+          };
+        </script>
+        <script is:inline src="https://www.highperformanceformat.com/2e4eabc2bba468ce037fe4e7d731f06c/invoke.js"></script>
+      </div>
+    </aside>
+  </div>
+
+  <script is:inline>
+    (function () {
+      const KEY = 'yomiru:sticky-mobile-ad:v2';
+      const wrapper = document.getElementById('yomiru-sticky-ad');
+      const toggle = document.getElementById('yomiru-sticky-ad-toggle');
+      const body = document.getElementById('yomiru-sticky-ad-body');
+      if (!wrapper || !toggle || !body) return;
+
+      function syncBodyPadding(active) {
+        document.body.classList.toggle('has-sticky-mobile-ad', active);
+      }
+
+      function shouldShow() {
+        try {
+          if (localStorage.getItem(KEY) === '1') return false;
+        } catch {}
+        return true;
+      }
+
+      function setCollapsed(collapsed) {
+        body.hidden = collapsed;
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.setAttribute('aria-label', collapsed ? 'Mostrar publicidad' : 'Ocultar publicidad');
+        toggle.querySelector('svg')?.classList.toggle('rotate-180', collapsed);
+        syncBodyPadding(!collapsed && !wrapper.hidden);
+      }
+
+      function applyVisibility() {
+        const active = shouldShow();
+        wrapper.hidden = !active;
+        if (active) {
+          setCollapsed(false);
+        } else {
+          syncBodyPadding(false);
+        }
+      }
+
+      toggle.addEventListener('click', () => {
+        if (body.hidden) {
+          setCollapsed(false);
+          return;
+        }
+        setCollapsed(true);
+      });
+
+      window.addEventListener('pageshow', applyVisibility);
+      applyVisibility();
+    })();
+  </script>
+</div>

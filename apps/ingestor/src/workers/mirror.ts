@@ -1,5 +1,5 @@
 import { Worker, type Job } from 'bullmq';
-import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { getRedis } from '../redis.js';
 import {
@@ -33,7 +33,7 @@ async function listMirrorCandidates(
     })
     .from(chapters)
     .innerJoin(series, eq(chapters.seriesId, series.id))
-    .where(inArray(chapters.downloadStatus, statuses))
+    .where(and(inArray(chapters.downloadStatus, statuses), eq(series.autoDownload, true)))
     .orderBy(desc(series.mirrorPriority), desc(series.popularity), asc(chapters.number))
     .limit(limit);
 }

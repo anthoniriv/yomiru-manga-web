@@ -1,14 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
-import { createSupabaseServer } from '../lib/supabase';
+import { createSupabaseServer, getUser } from '../lib/supabase';
 
-const sb = createSupabaseServer(Astro.request, Astro.cookies);
-const { data: { user } } = await sb.auth.getUser();
+const { user } = await getUser(Astro.request, Astro.cookies);
 
 if (!user) {
   return Astro.redirect(`/login?redirect=${encodeURIComponent('/biblioteca')}`);
 }
 
+const sb = createSupabaseServer(Astro.request, Astro.cookies, { persistCookies: false });
 const { data: favs } = await sb.from('user_favorites')
   .select('series_id, series_slug, series_title, cover_url, created_at')
   .eq('user_id', user.id)

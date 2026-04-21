@@ -38,6 +38,10 @@ export const series = sqliteTable(
     sourceName: text('source_name').notNull(),
     sourceUrl: text('source_url').notNull(),
     sourceId: text('source_id'),
+    watchUpdates: integer('watch_updates', { mode: 'boolean' }).notNull().default(false),
+    autoDownload: integer('auto_download', { mode: 'boolean' }).notNull().default(false),
+    checkIntervalMinutes: integer('check_interval_minutes').notNull().default(30),
+    lastCheckedAt: integer('last_checked_at', { mode: 'timestamp' }),
     lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
@@ -54,6 +58,7 @@ export const series = sqliteTable(
       t.kind,
     ),
     kindIdx: index('series_kind_idx').on(t.kind),
+    watchUpdatesIdx: index('series_watch_updates_idx').on(t.watchUpdates),
   }),
 );
 

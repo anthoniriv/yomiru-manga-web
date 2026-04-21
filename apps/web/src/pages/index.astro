@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import AdBanner from '../components/AdBanner.astro';
 import CoverRow from '../components/CoverRow.astro';
 import GenreChips from '../components/GenreChips.astro';
 import Hero, { type HeroSlide } from '../components/Hero.tsx';
@@ -59,6 +60,8 @@ const heroSlides: HeroSlide[] = latestAdded.map((s) => ({
       moreHref="/mangas?sort=updated"
     />
 
+    <AdBanner class="-mt-8" />
+
     <CoverRow
       title="Populares de la semana"
       badge="Tendencias globales"
@@ -66,5 +69,7 @@ const heroSlides: HeroSlide[] = latestAdded.map((s) => ({
       admin={admin}
       moreHref="/mangas?sort=popular"
     />
+
+    <AdBanner class="-mt-8" />
   </div>
 </Base>

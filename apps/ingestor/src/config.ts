@@ -30,6 +30,11 @@ export const config = {
     batchSize: Number(process.env.MIRROR_BATCH_SIZE ?? 50),
     intervalMs: Number(process.env.MIRROR_INTERVAL_MS ?? 60_000),
   },
+  watch: {
+    auto: process.env.WATCH_AUTO === '1',
+    batchSize: Number(process.env.WATCH_BATCH_SIZE ?? 20),
+    intervalMs: Number(process.env.WATCH_INTERVAL_MS ?? 10 * 60_000),
+  },
   mal: {
     enabled: process.env.MAL_ENRICH !== '0',
     delayMs: Number(process.env.MAL_REQUEST_DELAY_MS ?? 1_200),

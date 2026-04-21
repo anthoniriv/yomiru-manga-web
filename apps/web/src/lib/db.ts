@@ -542,6 +542,95 @@ export async function getSeriesForAdmin(
   });
 }
 
+export interface SeriesMonitorSettings {
+  id: string;
+  slug: string;
+  title: string;
+  sourceUrl: string;
+  kind: 'manga' | 'book';
+  status: Series['status'];
+  watchUpdates: boolean;
+  autoDownload: boolean;
+  checkIntervalMinutes: number;
+  lastCheckedAt: Date | null;
+  lastSyncedAt: Date | null;
+  totalChapters: number;
+}
+
+export interface AdminWatchedSeries extends SeriesMonitorSettings {
+  pendingChapters: number;
+  failedChapters: number;
+}
+
+export async function getSeriesMonitorSettingsBySlug(slug: string): Promise<SeriesMonitorSettings | null> {
+  return timed(`getSeriesMonitorSettingsBySlug(${slug})`, async () => {
+    const rows = await getPgDb()
+      .select({
+        id: series.id,
+        slug: series.slug,
+        title: series.title,
+        sourceUrl: series.sourceUrl,
+        kind: series.kind,
+        status: series.status,
+        watchUpdates: series.watchUpdates,
+        autoDownload: series.autoDownload,
+        checkIntervalMinutes: series.checkIntervalMinutes,
+        lastCheckedAt: series.lastCheckedAt,
+        lastSyncedAt: series.lastSyncedAt,
+        totalChapters: series.totalChapters,
+      })
+      .from(series)
+      .where(eq(series.slug, slug))
+      .limit(1);
+
+    return rows[0] ?? null;
+  });
+}
+
+export async function updateSeriesMonitorSettings(
+  slug: string,
+  patch: Partial<Pick<Series, 'watchUpdates' | 'autoDownload' | 'checkIntervalMinutes' | 'lastCheckedAt'>>,
+): Promise<void> {
+  await getPgDb()
+    .update(series)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(series.slug, slug));
+}
+
+export async function getWatchedSeriesForAdmin(limit = 50): Promise<AdminWatchedSeries[]> {
+  return timed('getWatchedSeriesForAdmin', async () => {
+    const rows = await getPgDb()
+      .select({
+        id: series.id,
+        slug: series.slug,
+        title: series.title,
+        sourceUrl: series.sourceUrl,
+        kind: series.kind,
+        status: series.status,
+        watchUpdates: series.watchUpdates,
+        autoDownload: series.autoDownload,
+        checkIntervalMinutes: series.checkIntervalMinutes,
+        lastCheckedAt: series.lastCheckedAt,
+        lastSyncedAt: series.lastSyncedAt,
+        totalChapters: series.totalChapters,
+        pendingChapters: sql<number>`count(*) filter (where ${chapters.downloadStatus} in ('pending', 'queued', 'downloading'))`,
+        failedChapters: sql<number>`count(*) filter (where ${chapters.downloadStatus} = 'failed')`,
+      })
+      .from(series)
+      .leftJoin(chapters, eq(chapters.seriesId, series.id))
+      .where(eq(series.watchUpdates, true))
+      .groupBy(series.id)
+      .orderBy(desc(series.lastCheckedAt), desc(series.popularity), asc(series.title))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      ...row,
+      pendingChapters: Number(row.pendingChapters ?? 0),
+      failedChapters: Number(row.failedChapters ?? 0),
+    }));
+  });
+}
+
 export async function searchSeries(query: string, limit = 20, opts: ListOpts = {}) {
   return timed('searchSeries', async () => {
     const showAdult = opts.showAdult ?? false;

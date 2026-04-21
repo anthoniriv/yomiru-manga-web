@@ -2,14 +2,27 @@
 import Base from '../layouts/Base.astro';
 import EnrichAll from '../components/EnrichAll.tsx';
 import { isAdmin } from '../lib/admin';
+import { getWatchedSeriesForAdmin } from '../lib/db';
+import { getIngestQueueStats } from '../lib/ingest';
 
 const loggedIn = isAdmin(Astro.cookies);
 const error = Astro.url.searchParams.get('error') === '1';
 const redirectTo = Astro.url.searchParams.get('redirect') ?? '/';
+const ingestStatus = Astro.url.searchParams.get('ingest');
+const queuedCount = Astro.url.searchParams.get('count');
+const watched = loggedIn ? await getWatchedSeriesForAdmin(30) : [];
+const queueStats = loggedIn ? await getIngestQueueStats() : null;
+const queueCards = queueStats
+  ? [
+      { label: 'Discover', stats: queueStats.discover },
+      { label: 'Chapter', stats: queueStats.chapter },
+      { label: 'Mirror', stats: queueStats.mirror },
+    ]
+  : [];
 ---
 
 <Base title="Gestión">
-  <div class={loggedIn ? 'max-w-3xl mx-auto px-4 py-10' : 'max-w-sm mx-auto px-4 py-16'}>
+  <div class={loggedIn ? 'max-w-6xl mx-auto px-4 py-10 space-y-8' : 'max-w-sm mx-auto px-4 py-16'}>
     {loggedIn ? (
       <div>
         <div class="flex items-center justify-between">
@@ -29,17 +42,200 @@ const redirectTo = Astro.url.searchParams.get('redirect') ?? '/';
             </button>
           </form>
         </div>
-        <div class="mt-8 p-6 rounded-2xl bg-ink-800/60 border border-white/5 backdrop-blur-sm">
-          <h2 class="font-bold text-white">Gestión masiva +18</h2>
-          <p class="text-xs text-zinc-400 mt-1 mb-4">
-            Lista todas las series con portadas. Selección múltiple para marcar/quitar +18.
-          </p>
-          <a
-            href="/admin/manga"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-zinc-950 text-sm font-bold hover:bg-accent-400 transition-colors shadow-glow-accent"
-          >
-            Abrir gestor →
-          </a>
+        {ingestStatus && (
+          <div class={`mt-6 rounded-xl border px-4 py-3 text-sm ${
+            ingestStatus === 'queue_error' || ingestStatus === 'invalid_url'
+              ? 'border-red-500/20 bg-red-500/10 text-red-300'
+              : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+          }`}>
+            {ingestStatus === 'queued' && 'Serie encolada en el motor local.'}
+            {ingestStatus === 'watch_queued' && `Escaneo lanzado para ${queuedCount ?? '0'} series vigiladas.`}
+            {ingestStatus === 'mirror_queued' && 'Descarga pendiente/lote enviada al worker local.'}
+            {ingestStatus === 'invalid_url' && 'Pega una URL completa del manga para encolarlo.'}
+            {ingestStatus === 'queue_error' && 'No pudimos conectar con Redis/BullMQ. Revisa tu worker local.'}
+          </div>
+        )}
+
+        <div class="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div class="rounded-2xl bg-ink-800/60 border border-white/5 p-6 backdrop-blur-sm space-y-5">
+            <div>
+              <h2 class="font-bold text-white">Motor local</h2>
+              <p class="text-xs text-zinc-400 mt-1">
+                Encola series y capítulos para que tu worker local descargue y suba a R2.
+              </p>
+            </div>
+
+            <form method="POST" action="/api/admin/ingest/discover" class="space-y-3">
+              <input type="hidden" name="redirect" value="/admin" />
+              <div>
+                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">URL del manga</label>
+                <input
+                  type="url"
+                  name="url"
+                  placeholder="https://zonatmo.com/library/manga/..."
+                  required
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950/70 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <select
+                  name="kind"
+                  class="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-xs font-bold uppercase tracking-widest text-zinc-200 outline-none focus:border-accent/60"
+                >
+                  <option value="manga">Manga</option>
+                  <option value="book">Book</option>
+                </select>
+                <label class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                  <input type="checkbox" name="watch_updates" value="1" checked class="h-4 w-4 accent-accent" />
+                  Vigilar
+                </label>
+                <label class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                  <input type="checkbox" name="auto_download" value="1" checked class="h-4 w-4 accent-accent" />
+                  Auto
+                </label>
+                <select
+                  name="check_interval_minutes"
+                  class="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-xs font-bold uppercase tracking-widest text-zinc-200 outline-none focus:border-accent/60"
+                >
+                  {[5, 10, 15, 30, 60].map((minutes) => (
+                    <option value={minutes} selected={minutes === 15}>
+                      {minutes} min
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-accent px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-950 hover:bg-white transition-colors"
+                >
+                  Añadir y sincronizar
+                </button>
+              </div>
+            </form>
+
+            <div class="flex flex-wrap gap-3">
+              <form method="POST" action="/api/admin/ingest/watch">
+                <input type="hidden" name="redirect" value="/admin" />
+                <input type="hidden" name="limit" value="20" />
+                <button
+                  type="submit"
+                  class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500 hover:text-zinc-950 transition-colors"
+                >
+                  Revisar vigilados ahora
+                </button>
+              </form>
+              <form method="POST" action="/api/admin/ingest/mirror">
+                <input type="hidden" name="redirect" value="/admin" />
+                <input type="hidden" name="limit" value="50" />
+                <input type="hidden" name="retry_failed" value="1" />
+                <button
+                  type="submit"
+                  class="rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-zinc-950 transition-colors"
+                >
+                  Descargar pendientes/fallidos
+                </button>
+              </form>
+              <a
+                href="/admin/manga"
+                class="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-accent/50 hover:text-accent transition-colors"
+              >
+                Gestor +18
+              </a>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-ink-800/60 border border-white/5 p-6 backdrop-blur-sm">
+            <h2 class="font-bold text-white">Colas</h2>
+            <p class="text-xs text-zinc-400 mt-1 mb-4">
+              Estado rápido del worker local conectado a Redis.
+            </p>
+
+            {queueStats ? (
+              <div class="space-y-3">
+                {queueCards.map((card) => (
+                  <div class="rounded-xl border border-white/5 bg-zinc-950/50 p-4">
+                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">{card.label}</div>
+                    <div class="mt-3 grid grid-cols-5 gap-2 text-center text-xs">
+                      {Object.entries(card.stats).map(([key, value]) => (
+                        <div class="rounded-lg bg-zinc-900 px-2 py-2">
+                          <div class="font-black text-white">{value}</div>
+                          <div class="mt-1 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{key}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="rounded-xl border border-dashed border-white/10 bg-zinc-950/40 px-4 py-6 text-sm text-zinc-500">
+                No pudimos leer Redis/BullMQ desde web. Si el worker corre local, revisa `REDIS_URL`.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-ink-800/60 border border-white/5 p-6 backdrop-blur-sm">
+          <div class="flex items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 class="font-bold text-white">Series vigiladas</h2>
+              <p class="text-xs text-zinc-400 mt-1">
+                Las series `ongoing` marcadas aquí se revisan desde el worker local.
+              </p>
+            </div>
+            <span class="rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              {watched.length} activas
+            </span>
+          </div>
+
+          {watched.length === 0 ? (
+            <div class="rounded-xl border border-dashed border-white/10 bg-zinc-950/40 px-4 py-8 text-sm text-zinc-500">
+              Todavía no tienes series marcadas para vigilancia.
+            </div>
+          ) : (
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                    <th class="px-3 py-3">Serie</th>
+                    <th class="px-3 py-3">Auto</th>
+                    <th class="px-3 py-3">Intervalo</th>
+                    <th class="px-3 py-3">Pendientes</th>
+                    <th class="px-3 py-3">Fallidos</th>
+                    <th class="px-3 py-3">Último check</th>
+                    <th class="px-3 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {watched.map((item) => (
+                    <tr class="border-b border-white/5 last:border-b-0">
+                      <td class="px-3 py-3">
+                        <a href={`/manga/${item.slug}`} class="font-bold text-white hover:text-accent transition-colors">
+                          {item.title}
+                        </a>
+                        <div class="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                          {item.status} · {item.totalChapters} caps
+                        </div>
+                      </td>
+                      <td class="px-3 py-3 text-zinc-300">{item.autoDownload ? 'On' : 'Off'}</td>
+                      <td class="px-3 py-3 text-zinc-300">{item.checkIntervalMinutes} min</td>
+                      <td class="px-3 py-3 text-zinc-300">{item.pendingChapters}</td>
+                      <td class="px-3 py-3 text-zinc-300">{item.failedChapters}</td>
+                      <td class="px-3 py-3 text-zinc-400">
+                        {item.lastCheckedAt ? new Date(item.lastCheckedAt).toLocaleString('es-PE') : '—'}
+                      </td>
+                      <td class="px-3 py-3 text-right">
+                        <a
+                          href={`/manga/${item.slug}`}
+                          class="inline-flex rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-accent/50 hover:text-accent transition-colors"
+                        >
+                          Abrir
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         <EnrichAll client:load />
       </div>

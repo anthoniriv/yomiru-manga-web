@@ -736,10 +736,10 @@ function parseChapterPayload(
   if (directImages.length > 0) {
     const title =
       pickString(obj.name, (obj.chapter as Record<string, unknown> | undefined)?.name) || null;
-    return { title, images: directImages, paragraphs: [] };
+    return { title, images: sanitizeExtractedImages(directImages, pageUrl), paragraphs: [] };
   }
 
-  const images = extractImagesFromUnknownJson(payload, pageUrl);
+  const images = sanitizeExtractedImages(extractImagesFromUnknownJson(payload, pageUrl), pageUrl);
   const title =
     pickString(
       obj.title,
@@ -808,9 +808,35 @@ function isLikelyImageUrl(url: string, keyHint: string): boolean {
 
   if (IMAGE_URL_PATTERN.test(url)) return true;
   if (/\/images?\//i.test(url)) return true;
-  if (/(img|image|page|pages|panel|panels|chapter)/i.test(keyHint)) return true;
+  if (/(img|image|page|pages|panel|panels)/i.test(keyHint)) return true;
 
   return false;
+}
+
+function sanitizeExtractedImages(images: string[], pageUrl: string): string[] {
+  const normalizedPageUrl = normalizeComparableUrl(pageUrl);
+  if (!normalizedPageUrl) return uniqueStrings(images);
+
+  return uniqueStrings(
+    images.filter((imageUrl) => {
+      const normalizedImageUrl = normalizeComparableUrl(imageUrl);
+      return normalizedImageUrl !== normalizedPageUrl;
+    }),
+  );
+}
+
+function normalizeComparableUrl(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    parsed.hash = '';
+    if ((parsed.protocol === 'http:' && parsed.port === '80') || (parsed.protocol === 'https:' && parsed.port === '443')) {
+      parsed.port = '';
+    }
+    parsed.hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
 }
 
 function pickString(...values: unknown[]): string | null {

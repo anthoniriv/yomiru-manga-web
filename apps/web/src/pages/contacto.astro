@@ -1,0 +1,212 @@
+---
+import Base from '../layouts/Base.astro';
+
+const status = Astro.url.searchParams.get('status');
+const reason = Astro.url.searchParams.get('reason');
+
+const notices: Record<string, { tone: string; title: string; body: string }> = {
+  ok: {
+    tone: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
+    title: 'Mensaje enviado',
+    body: 'Ya lo mandamos al correo de soporte y al canal de Discord para revisarlo cuanto antes.',
+  },
+  invalid: {
+    tone: 'border-red-500/20 bg-red-500/10 text-red-300',
+    title: 'Falta completar algo',
+    body:
+      reason === 'invalid_email'
+        ? 'Revisa el correo que escribiste.'
+        : reason === 'missing_manga_reference'
+          ? 'Para pedir un manga nuevo, escribe al menos el nombre o una URL de referencia.'
+          : reason === 'message_too_short'
+            ? 'Cuéntanos un poco más para poder ayudarte mejor.'
+            : 'Revisa el formulario y vuelve a intentarlo.',
+  },
+  delivery_error: {
+    tone: 'border-red-500/20 bg-red-500/10 text-red-300',
+    title: 'No pudimos enviarlo',
+    body: 'El formulario está listo, pero falta revisar la configuración de correo o Discord.',
+  },
+};
+
+const notice = status ? notices[status] : null;
+---
+
+<Base
+  title="Contacto"
+  description="Solicita un manga, reporta errores de capítulos o avísanos de cualquier problema desde un solo formulario."
+>
+  <section class="border-b border-zinc-900 bg-zinc-950">
+    <div class="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-24">
+      <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Soporte</p>
+          <h1 class="mt-3 text-4xl font-black italic uppercase leading-none tracking-tighter text-white md:text-6xl">
+            Contacto
+          </h1>
+          <p class="mt-5 max-w-xl text-base leading-7 text-zinc-400">
+            Si falta un manga, un capítulo tiene páginas rotas o viste cualquier error, escríbenos aquí.
+            Lo enviamos directo al correo de soporte y también al Discord del proyecto.
+          </p>
+
+          <div class="mt-8 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/70 p-4">
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-accent">Nuevo manga</p>
+              <p class="mt-2 text-sm leading-6 text-zinc-400">
+                Pide una serie nueva con nombre, fuente o enlace.
+              </p>
+            </div>
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/70 p-4">
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-accent">Capítulos</p>
+              <p class="mt-2 text-sm leading-6 text-zinc-400">
+                Reporta páginas rotas, capítulos caídos o capítulos mezclados.
+              </p>
+            </div>
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/70 p-4">
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-accent">Errores</p>
+              <p class="mt-2 text-sm leading-6 text-zinc-400">
+                También sirve para bugs, portadas mal puestas o cualquier detalle raro.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-zinc-800 bg-zinc-950/70 p-6 md:p-8">
+          {notice && (
+            <div class={`mb-6 rounded-lg border px-4 py-3 ${notice.tone}`}>
+              <p class="text-sm font-black uppercase tracking-[0.16em]">{notice.title}</p>
+              <p class="mt-1 text-sm leading-6">{notice.body}</p>
+            </div>
+          )}
+
+          <form method="POST" action="/api/contact" class="space-y-5">
+            <input type="hidden" name="redirect" value="/contacto" />
+            <input type="hidden" name="page_url" value={Astro.url.pathname} />
+            <input type="text" name="company" tabindex="-1" autocomplete="off" class="hidden" />
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <div>
+                <label for="kind" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Tipo
+                </label>
+                <select
+                  id="kind"
+                  name="kind"
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                >
+                  <option value="new_manga">Solicitar nuevo manga</option>
+                  <option value="chapter_error">Error de capítulo</option>
+                  <option value="manga_error">Error de manga o ficha</option>
+                  <option value="general">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label for="subject" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Asunto
+                </label>
+                <input
+                  id="subject"
+                  name="subject"
+                  required
+                  placeholder="Ej. faltan páginas en el capítulo 12"
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <div>
+                <label for="name" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Nombre
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  placeholder="Cómo quieres que te identifiquemos"
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+              <div>
+                <label for="email" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="tu@correo.com"
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-[1fr_220px]">
+              <div>
+                <label for="manga_title" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Manga o serie
+                </label>
+                <input
+                  id="manga_title"
+                  name="manga_title"
+                  placeholder="Hell's Paradise, One Piece, etc."
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+              <div>
+                <label for="chapter_ref" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Capítulo
+                </label>
+                <input
+                  id="chapter_ref"
+                  name="chapter_ref"
+                  placeholder="12 / 12.5 / extra"
+                  class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="source_url" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                URL de referencia
+              </label>
+              <input
+                id="source_url"
+                type="url"
+                name="source_url"
+                placeholder="Pega el enlace del manga, capítulo o fuente si lo tienes"
+                class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+
+            <div>
+              <label for="message" class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                Mensaje
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                required
+                rows="7"
+                placeholder="Cuéntanos qué pasó o qué manga te gustaría ver. Entre más contexto nos dejes, mejor."
+                class="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm leading-7 text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+              ></textarea>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-xs leading-6 text-zinc-500">
+                Este mensaje se envía a soporte y también crea una alerta en Discord para revisión interna.
+              </p>
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-950 shadow-glow-accent hover:bg-white transition-colors"
+              >
+                Enviar reporte
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

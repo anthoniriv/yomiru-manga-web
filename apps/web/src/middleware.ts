@@ -67,13 +67,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return res;
   }
 
-  // Segmentar cache por estado +18 — sin esto usuarios con/sin adult cookie
-  // comparten cache y el filtro no refleja su preferencia.
-  const nsfwEnabled = /(?:^|;\s*)yomiru_nsfw=1(?:;|$)/.test(cookieHeader);
-  const cacheKey = new Request(
-    `${url.toString()}#${getCacheVersion()}#nsfw=${nsfwEnabled ? 1 : 0}`,
-    { method: 'GET' },
-  );
+  const cacheKey = new Request(`${url.toString()}#${getCacheVersion()}`, { method: 'GET' });
   const execCtx = (
     context.locals as { runtime?: { ctx?: { waitUntil?: (p: Promise<unknown>) => void } } }
   ).runtime?.ctx;

@@ -1,5 +1,4 @@
 ---
-import { readShowAdult } from '../lib/nsfw';
 import { getUser } from '../lib/supabase';
 import GrowthPromoModal from '../components/GrowthPromoModal.astro';
 import StickyMobileAd from '../components/StickyMobileAd.astro';
@@ -9,7 +8,6 @@ export interface Props {
   description?: string;
 }
 const { title, description = 'Yomiru — Lector de manga' } = Astro.props;
-const showAdult = readShowAdult(Astro.cookies);
 const currentPath = Astro.url.pathname + Astro.url.search;
 const hideStickyAd =
   /^\/manga\/[^/]+\/[^/]+$/.test(Astro.url.pathname) ||
@@ -161,20 +159,6 @@ try {
         document.addEventListener('submit', (e) => {
           const f = e.target;
           if (!(f instanceof HTMLFormElement)) return;
-          if (f.hasAttribute('data-nsfw-toggle')) {
-            e.preventDefault();
-            const data = new FormData(f);
-            fetch(f.action, {
-              method: 'POST',
-              body: data,
-              credentials: 'same-origin',
-            }).then(() => {
-              window.location.href = (data.get('redirect') as string) || window.location.pathname;
-            }).catch(() => {
-              f.submit();
-            });
-            return;
-          }
           if (f.method.toLowerCase() !== 'post') return;
           if (f.hasAttribute('data-inline-submit')) {
             f.classList.add('is-submitting');
@@ -238,24 +222,6 @@ try {
           {currentUser && (
             <a href="/biblioteca" class="hidden md:inline text-sm font-bold text-zinc-400 hover:text-white transition-colors">Biblioteca</a>
           )}
-          <div class="hidden md:block h-6 w-px bg-zinc-800"></div>
-          <form method="POST" action="/api/nsfw" class="flex items-center" data-no-loader data-nsfw-toggle>
-            <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />
-            <input type="hidden" name="redirect" value={currentPath} />
-            <button
-              type="submit"
-              aria-pressed={showAdult ? 'true' : 'false'}
-              title={showAdult ? 'Ocultar contenido +18' : 'Mostrar contenido +18'}
-              class={`min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-full flex items-center justify-center font-black text-[10px] tracking-tight transition-all shadow-lg touch-manipulation ${
-                showAdult
-                  ? 'bg-accent text-zinc-950 shadow-accent/30'
-                  : 'bg-white text-zinc-950 shadow-white/5 hover:bg-accent hover:shadow-accent/30'
-              }`}
-            >
-              18+
-            </button>
-          </form>
-
           {currentUser ? (
             <form method="POST" action="/api/auth/logout" class="flex items-center">
               <input type="hidden" name="redirect" value={currentPath} />
@@ -280,7 +246,7 @@ try {
           )}
         </div>
       </nav>
-      <div class="md:hidden max-w-7xl mx-auto px-4 pt-3 space-y-3">
+      <div class="md:hidden max-w-7xl mx-auto px-4 pt-3">
         <form action="/mangas" method="GET">
           <label class="relative block">
             <span class="sr-only">Buscar manga</span>
@@ -300,26 +266,6 @@ try {
               class="w-full rounded-full border border-zinc-800 bg-zinc-900 px-11 py-2.5 text-sm font-medium text-white placeholder-zinc-500 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
             />
           </label>
-        </form>
-        <form method="POST" action="/api/nsfw" class="flex items-center justify-between px-1 py-1" data-no-loader data-nsfw-toggle>
-          <input type="hidden" name="enabled" value={showAdult ? '0' : '1'} />
-          <input type="hidden" name="redirect" value={currentPath} />
-          <div class="min-w-0">
-            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Filtro +18</p>
-            <p class="mt-1 text-sm font-semibold text-white">{showAdult ? 'Activado' : 'Apagado'}</p>
-          </div>
-          <button
-            type="submit"
-            aria-pressed={showAdult ? 'true' : 'false'}
-            title={showAdult ? 'Ocultar contenido +18' : 'Mostrar contenido +18'}
-            class={`min-h-11 min-w-[58px] rounded-full flex items-center justify-center px-3 font-black text-[10px] tracking-tight transition-all shadow-lg touch-manipulation ${
-              showAdult
-                ? 'bg-accent text-zinc-950 shadow-accent/30'
-                : 'bg-white text-zinc-950 shadow-white/5'
-            }`}
-          >
-            18+
-          </button>
         </form>
       </div>
     </header>

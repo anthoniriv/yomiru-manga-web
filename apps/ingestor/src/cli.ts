@@ -67,8 +67,10 @@ async function cmdRetryFailed() {
 }
 
 async function cmdCatalog(args: string[]) {
-  const source = (args[0] ?? 'zonatmo') as 'zonatmo';
-  if (source !== 'zonatmo') throw new Error('usage: cli catalog zonatmo [--start-page N] [--max-pages N] [--no-details] [--no-mirror]');
+  const source = (args[0] ?? 'zonatmo') as 'zonatmo' | 'capibara';
+  if (source !== 'zonatmo' && source !== 'capibara') {
+    throw new Error('usage: cli catalog <zonatmo|capibara> [--start-page N] [--max-pages N] [--no-details] [--no-mirror]');
+  }
   const job = await catalogQueue().add('catalog', {
     source,
     startPage: readNumberFlag(args, 'start-page'),

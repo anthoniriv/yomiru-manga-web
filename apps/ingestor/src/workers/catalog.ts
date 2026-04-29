@@ -7,12 +7,15 @@ import { upsertChapter, upsertSeries } from '../repo.js';
 import { makeSlug } from '../storage.js';
 import { lookupMalMangaStats } from '../sources/mal.js';
 import { ZonatmoProvider } from '../sources/zonatmo.js';
+import { CapibaraProvider } from '../sources/capibara.js';
 import type { DiscoveredSeries, SourceProvider } from '../sources/types.js';
 
 function providerFor(source: CatalogJob['source']): SourceProvider {
   switch (source) {
     case 'zonatmo':
       return new ZonatmoProvider();
+    case 'capibara':
+      return new CapibaraProvider();
   }
 }
 

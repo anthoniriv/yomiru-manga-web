@@ -194,11 +194,6 @@ const statusKey = series.status?.toLowerCase() ?? '';
 
         <div class="min-w-0 pb-2 space-y-10 md:space-y-12">
           <div class="flex flex-wrap items-center gap-2 mb-4">
-            {series.sourceName && (
-              <span class="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
-                {series.sourceName.replace(/^www\./, '')}
-              </span>
-            )}
             {series.isAdult && (
               <span class="rounded-full bg-accent px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-950">
                 +18

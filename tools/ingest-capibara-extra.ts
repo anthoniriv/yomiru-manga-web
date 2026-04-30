@@ -52,7 +52,7 @@ async function processEntry(
   const externalId = `${entry.scanSlug}/${entry.mangaSlug}`;
   const sourceUrl = `https://capibaratraductor.com/${entry.scanSlug}/manga/${entry.mangaSlug}`;
 
-  const existing = await findSeriesBySource(SOURCE_NAME, sourceUrl);
+  let existing = await findSeriesBySource(SOURCE_NAME, sourceUrl);
   if (existing && existing.totalChapters > 0 && !opts.skipPages) {
     // Resume: skip series fully ingested (chapters exist + at least one page exists)
     const existingChapters = await listChaptersBySeries(existing.id);
@@ -71,14 +71,65 @@ async function processEntry(
 
   const { series, chapters } = await provider.fetchSeriesDetails(externalId);
 
-  const slug = makeSlug(series.title, externalId.replace('/', '-'));
+  let slug = makeSlug(series.title, externalId.replace('/', '-'));
+  let normalizedTitle = makeSlug(series.title, slug);
+
+  // Slug/normalizedTitle collision handling: if a series with this
+  // slug+kind OR normalizedTitle+kind already exists (zonatmo orphan with
+  // same title, or another capibara scan publishing the same manga), MERGE
+  // or DISAMBIGUATE depending on what kind of row collides.
+  if (!existing) {
+    const db = getPgDb();
+    const collision = await db.execute<{
+      id: string; source_name: string; source_url: string; total_chapters: number;
+    }>(sql`
+      SELECT id, source_name, source_url, total_chapters
+      FROM manga.series
+      WHERE (slug = ${slug} OR normalized_title = ${normalizedTitle}) AND kind = ${series.kind}
+      LIMIT 1
+    `);
+    const rows: any = Array.isArray(collision) ? collision : (collision as any).rows ?? [];
+    const hit = rows[0];
+    if (hit) {
+      // If hit is already from capibara (another scan published same manga),
+      // skip — first scan wins. Avoids creating duplicate entries.
+      if (hit.source_name === SOURCE_NAME) {
+        return { chapters: 0, pages: 0, skipped: true };
+      }
+      // Refuse to merge if colliding (non-capibara) series has real R2 pages —
+      // would destroy user content. Disambiguate slug+normalizedTitle.
+      const pc = await db.execute<{ count: string }>(sql`
+        SELECT COUNT(*) AS count FROM manga.pages p
+        JOIN manga.chapters c ON p.chapter_id = c.id
+        WHERE c.series_id = ${hit.id}
+      `);
+      const pcRows: any = Array.isArray(pc) ? pc : (pc as any).rows ?? [];
+      if (Number(pcRows[0]?.count ?? 0) > 0) {
+        // Existing non-capibara row has R2 content — keep it, skip capibara dup
+        return { chapters: 0, pages: 0, skipped: true };
+      } else {
+        // Empty cascarón — overwrite source, clear R2 paths, drop orphan chapters.
+        await db.execute(sql`
+          UPDATE manga.series
+          SET source_name = ${SOURCE_NAME},
+              source_url = ${sourceUrl},
+              cover_path = NULL,
+              banner_path = NULL,
+              updated_at = now()
+          WHERE id = ${hit.id}
+        `);
+        await db.execute(sql`DELETE FROM manga.chapters WHERE series_id = ${hit.id}`);
+        existing = await findSeriesBySource(SOURCE_NAME, sourceUrl);
+      }
+    }
+  }
   const popularity = entry.views > 0 ? entry.views : chapters.length;
   const saved = await upsertSeries({
     id: existing?.id ?? createId(),
     kind: series.kind,
     slug,
     title: series.title,
-    normalizedTitle: makeSlug(series.title, slug),
+    normalizedTitle,
     altTitles: series.altTitles,
     description: series.description,
     coverPath: null,

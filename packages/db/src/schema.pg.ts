@@ -130,7 +130,7 @@ export const pages = mangaSchema.table(
       .notNull()
       .references(() => chapters.id, { onDelete: 'cascade' }),
     idx: integer('idx').notNull(),
-    storagePath: text('storage_path').notNull(),
+    storagePath: text('storage_path'),
     sourceUrl: text('source_url').notNull(),
     width: integer('width'),
     height: integer('height'),

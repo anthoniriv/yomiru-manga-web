@@ -6,6 +6,7 @@ import { getRedis } from '../redis.js';
 import { QUEUE_CHAPTER, type ChapterJob } from '../queues.js';
 import { scrapeChapterContent } from '../scraper.js';
 import { ZonatmoProvider } from '../sources/zonatmo.js';
+import { CapibaraProvider } from '../sources/capibara.js';
 import {
   getChapter,
   findSeriesById,
@@ -32,6 +33,13 @@ async function getChapterImages(chapter: {
   ) {
     return new ZonatmoProvider().fetchChapterImages({
       externalId: chapter.sourceChapterId,
+      sourceUrl: chapter.sourceUrl,
+      seriesExternalId: series.sourceId,
+    });
+  }
+  if (series.sourceName.includes('capibaratraductor') && series.sourceId) {
+    return new CapibaraProvider().fetchChapterImages({
+      externalId: chapter.sourceChapterId ?? '',
       sourceUrl: chapter.sourceUrl,
       seriesExternalId: series.sourceId,
     });

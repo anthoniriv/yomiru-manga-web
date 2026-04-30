@@ -20,7 +20,7 @@ export interface ChapterJob {
 }
 
 export interface CatalogJob {
-  source: 'zonatmo';
+  source: 'zonatmo' | 'capibara';
   startPage?: number;
   maxPages?: number;
   fetchDetails?: boolean;

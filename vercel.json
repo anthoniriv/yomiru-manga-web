@@ -1,6 +1,5 @@
 {
-  "buildCommand": "npm run web:build",
+  "buildCommand": "npm run web:build && rm -rf .vercel/output && cp -R apps/web/.vercel/output .vercel/output",
   "installCommand": "npm install",
-  "outputDirectory": "apps/web/.vercel/output",
   "framework": null
 }

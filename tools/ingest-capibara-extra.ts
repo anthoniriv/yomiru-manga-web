@@ -260,7 +260,7 @@ async function main() {
 }
 
 main()
-  .then(async () => { await closePgDb(); })
+  .then(async () => { await closePgDb(); process.exit(0); })
   .catch(async (e) => {
     console.error('FAIL:', e);
     try { await closePgDb(); } catch {}

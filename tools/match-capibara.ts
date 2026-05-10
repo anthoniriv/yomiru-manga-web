@@ -272,7 +272,10 @@ async function fileExists(p: string): Promise<boolean> {
   }
 }
 
-main().catch((e) => {
-  console.error('FAIL:', e);
-  process.exit(1);
-});
+main().then(
+  () => process.exit(0),
+  (e) => {
+    console.error('FAIL:', e);
+    process.exit(1);
+  },
+);

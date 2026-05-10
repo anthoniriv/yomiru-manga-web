@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.cache
+**/build
+.git
+storage
+apps/mobile
+apps/backend
+apps/ingestor
+.env
+.env.*
+*.log
+*.sqlite
+*.db

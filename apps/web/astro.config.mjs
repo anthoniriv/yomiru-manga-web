@@ -11,5 +11,13 @@ export default defineConfig({
     resolve: {
       dedupe: ['react', 'react-dom'],
     },
+    build: {
+      rollupOptions: {
+        external: ['bullmq', 'ioredis'],
+      },
+    },
+    ssr: {
+      external: ['bullmq', 'ioredis'],
+    },
   },
 });
